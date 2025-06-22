@@ -4,4 +4,4 @@
 
 ### Chapter 2
 
-- [1.1.](https://github.com/mhonganmn/k8sSubmissions/tree/1.1/log_output)
+- [1.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.1)
