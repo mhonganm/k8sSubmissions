@@ -7,3 +7,4 @@
 - [1.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.1)
 - [1.2.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.2)
 - [1.3.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.3)
+- [1.4.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.4)
