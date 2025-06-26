@@ -17,4 +17,4 @@ spec:
       containers:
       - name: log-output-container
         image: honganmaki/log-output:latest
-        imagePullPolicy: always
+        imagePullPolicy: Always
