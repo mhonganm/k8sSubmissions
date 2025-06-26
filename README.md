@@ -12,3 +12,4 @@
 - [1.6.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.6)
 - [1.7.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.7)
 - [1.8.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.8)
+- [1.9.](https://github.com/mhonganm/k8sSubmissions/releases/tag/1.9)
