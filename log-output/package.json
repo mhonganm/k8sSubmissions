@@ -1,0 +1,12 @@
+{
+  "name": "log-output-app",
+  "version": "1.0.0",
+  "description": "Logs unique ID and provides status via web endpoint.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

@@ -1,25 +1,40 @@
+const express = require('express');
 const crypto = require('crypto'); // Built-in Node.js module for cryptography
 
-// Generate the UUID on application startup
-const uniqueId = crypto.randomUUID();
+const app = express();
+const PORT = process.env.PORT || 3000; // Use PORT environment variable, default to 3000
 
-console.log(`Application started. Unique ID generated: ${uniqueId}`);
+// Generate a unique ID on application startup and store it in memory
+const uniqueAppInstanceId = crypto.randomUUID();
 
-// Function to print the ID with a formatted timestamp
-function printIdWithTimestamp() {
-    // Get current date and time
+// Function to log the unique ID with a timestamp (as per original requirement)
+function logUniqueIdWithTimestamp() {
     const now = new Date();
-
-    // Format the timestamp to YYYY-MM-DDTHH:mm:ss.sssZ
-    // toISOString() provides a good starting point, we just need to remove the trailing 'Z'
-    // and then add it back to match the example exactly, if needed.
-    // The example uses Z for UTC, which toISOString() provides.
-    const timestamp = now.toISOString(); 
-    
-    // Output in the exact format: 2020-03-30T12:15:17.705Z: 8523ecb1-c716-4cb6-a044-b9e83bb98e43
-    console.log(`${timestamp}: ${uniqueId}`);
+    const timestamp = now.toISOString(); // e.g., 2025-06-26T12:15:17.705Z
+    console.log(`${timestamp}: ${uniqueAppInstanceId}`);
 }
 
-// Set an interval to call the function every 5 seconds (5000 milliseconds)
-setInterval(printIdWithTimestamp, 5000);
+// Start the periodic logging (every 5 seconds)
+setInterval(logUniqueIdWithTimestamp, 5000);
 
+// NEW: Endpoint to provide the current status
+app.get('/status', (req, res) => {
+  const now = new Date();
+  const currentTimestamp = now.toISOString();
+  res.json({
+    uniqueId: uniqueAppInstanceId,
+    timestamp: currentTimestamp,
+    message: "This is the current status of the log-output application."
+  });
+});
+
+// Optional: Basic root endpoint to confirm server is alive
+app.get('/', (req, res) => {
+    res.send('Log-output application is running. Try /status for current info.');
+});
+
+// Start the Express web server
+app.listen(PORT, () => {
+  console.log(`Server started in port ${PORT}`);
+  console.log(`Application started. Unique ID generated: ${uniqueAppInstanceId}`);
+});
