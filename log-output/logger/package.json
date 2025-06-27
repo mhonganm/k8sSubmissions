@@ -1,0 +1,10 @@
+{
+  "name": "log-output-logger",
+  "version": "1.0.0",
+  "description": "Generates a unique ID and logs to a shared file.",
+  "main": "logger.js",
+  "scripts": {
+    "start": "node logger.js"
+  },
+  "dependencies": {}
+}

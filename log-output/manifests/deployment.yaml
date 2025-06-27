@@ -14,7 +14,29 @@ spec:
       labels:
         app: log-output
     spec:
+      volumes:
+      - name: shared-logs-volume
+        emptyDir: {}
       containers:
-      - name: log-output-container
-        image: honganmaki/log-output:latest
+      - name: logger-container
+        image: honganmaki/log-output-logger:latest
         imagePullPolicy: Always
+        env:
+        - name: LOG_FILE_DIR
+          value: "/shared-logs"
+        volumeMounts:
+        - name: shared-logs-volume
+          mountPath: /shared-logs
+      - name: reader-container
+        image: honganmaki/log-output-reader:latest
+        imagePullPolicy: Always
+        env:
+        - name: PORT
+          value: "3000"
+        - name: LOG_FILE_DIR
+          value: "/shared-logs"
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: shared-logs-volume
+          mountPath: /shared-logs
