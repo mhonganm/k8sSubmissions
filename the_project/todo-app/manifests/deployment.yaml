@@ -19,9 +19,9 @@ spec:
         persistentVolumeClaim:
           claimName: cached-images-pvc
       containers:
-      - name: todo-app-container
-        image: honganmaki/todo-app:latest
-        imagePullPolicy: Never
+      - name: honganmaki/todo-app-container
+        image: todo-app:latest
+        imagePullPolicy: Always
         env:
         - name: PORT
           value: "3000"
