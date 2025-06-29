@@ -14,10 +14,21 @@ spec:
       labels:
         app: todo-app
     spec:
+      volumes:
+      - name: cached-images-data
+        persistentVolumeClaim:
+          claimName: cached-images-pvc
       containers:
       - name: todo-app-container
-        image: honganmaki/todo-app:v2.0
-        imagePullPolicy: Always
+        image: honganmaki/todo-app:latest
+        imagePullPolicy: Never
         env:
         - name: PORT
           value: "3000"
+        - name: IMAGE_CACHE_DIR
+          value: "/mnt/image-cache"
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: cached-images-data
+          mountPath: /mnt/image-cache

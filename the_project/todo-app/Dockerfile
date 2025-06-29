@@ -1,14 +1,18 @@
-FROM node:16-alpine
+FROM node:18-alpine
 
 WORKDIR /usr/src/app
+
+RUN apk update \
+    && apk add --no-cache curl wget openssl \
+    && rm -rf /var/cache/apk/*
 
 COPY package*.json ./
 
 RUN npm install --production
 
-
 COPY app.js .
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "app.js"]
+
