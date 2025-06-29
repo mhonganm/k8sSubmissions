@@ -42,10 +42,12 @@ const agent = new https.Agent({
 async function fetchAndCacheImage() {
     console.log('[TODO-APP] Fetching new image...');
     try {
+        // *** CHANGE THIS LINE TO A DYNAMIC PLACEHOLD.CO URL ***
         const imageUrl = `https://placehold.co/1200x800.png?text=Log+output+Image+${Date.now()}`;
+        // Ensure you have `agent` and `timeout` here:
         const response = await fetch(imageUrl, {
             agent: agent,
-            timeout: 15000
+            timeout: 15000 // Keep the 15-second timeout
         });
 
         if (!response.ok) {
@@ -89,33 +91,19 @@ app.use('/image', async (req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-    // todos
-    const hardcodedTodos = [
-        "Todo 1",
-        "Todo 2",
-        "Todo 3",
-        "Todo 4"
-    ];
-
-    const todoListItems = hardcodedTodos.map(todo => `<li>${todo}</li>`).join('');
-
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Log output - Todo & Image App</title>
+            <title>Random Image App</title>
             <style>
                 body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }
                 img { max-width: 90%; height: auto; border: 2px solid #333; margin-bottom: 20px; }
-                button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; margin: 5px; }
+                button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
                 button:hover { background-color: #0056b3; }
                 .status { margin-top: 10px; font-size: 0.9em; color: #555; }
-                .todo-section { margin-top: 40px; text-align: center; }
-                .todo-input { width: 300px; padding: 8px; margin-bottom: 10px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
-                .todo-list { list-style: inside; padding: 0; text-align: left; }
-                .todo-list li { background-color: #fff; border: 1px solid #eee; margin-bottom: 5px; padding: 10px; border-radius: 4px; }
             </style>
         </head>
         <body>
@@ -123,16 +111,6 @@ app.get('/', (req, res) => {
             <img id="randomImage" src="/image" alt="Random Image">
             <button onclick="refreshImage()">New Image</button>
             <p class="status">Last fetched: <span id="lastFetched">N/A</span></p>
-
-            <div class="todo-section">
-                <h2>Your Todos</h2>
-                <input type="text" id="todoInput" class="todo-input" maxlength="140" placeholder="Add a new todo (max 140 chars)">
-                <button id="sendTodoButton">Send Todo</button>
-                <ul id="todoList" class="todo-list">
-                    ${todoListItems}
-                </ul>
-            </div>
-
             <script>
                 function updateStatus() {
                     if (window.currentImageMetadata && window.currentImageMetadata.timestamp) {
@@ -161,19 +139,7 @@ app.get('/', (req, res) => {
                     setTimeout(fetchMetadata, 1000);
                 }
 
-                document.addEventListener('DOMContentLoaded', () => {
-                    fetchMetadata();
-                    // send
-                    document.getElementById('sendTodoButton').addEventListener('click', () => {
-                        const todoText = document.getElementById('todoInput').value;
-                        if (todoText.length > 140) {
-                            alert('Todo is too long! Max 140 characters.');
-                            return;
-                        }
-                        console.log('Send button clicked for todo:', todoText);
-                    });
-                });
-
+                document.addEventListener('DOMContentLoaded', fetchMetadata);
                 setInterval(fetchMetadata, 30000);
             </script>
         </body>
@@ -191,15 +157,14 @@ app.get('/metadata', (req, res) => {
 
 async function checkAndFetchImage() {
 
-    const fetchIntervalMs = 10 * 60 * 1000; 
-    if (!currentImageMetadata || (Date.now() - currentImageMetadata.timestamp > fetchIntervalMs)) {
+    if (!currentImageMetadata || (Date.now() - currentImageMetadata.timestamp > 10 * 60 * 1000) || currentImageMetadata.gracePeriodUsed) {
         await fetchAndCacheImage();
     }
 }
 
 loadMetadata().then(() => {
     checkAndFetchImage();
-    setInterval(checkAndFetchImage, 10 * 60 * 1000);
+    setInterval(checkAndFetchImage, 5 * 60 * 1000);
 });
 
 app.listen(PORT, () => {
