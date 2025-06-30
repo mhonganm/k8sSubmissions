@@ -14,10 +14,6 @@ spec:
       labels:
         app: ping-pong
     spec:
-      volumes:
-      - name: ping-pong-shared-data
-        persistentVolumeClaim:
-          claimName: shared-ping-pong-pvc
       containers:
       - name: ping-pong-container
         image: honganmaki/ping-pong:latest
@@ -25,10 +21,5 @@ spec:
         env:
         - name: PORT
           value: "3001"
-        - name: SHARED_VOLUME_PATH
-          value: "/mnt/shared-data"
         ports:
         - containerPort: 3001
-        volumeMounts:
-        - name: ping-pong-shared-data
-          mountPath: /mnt/shared-data

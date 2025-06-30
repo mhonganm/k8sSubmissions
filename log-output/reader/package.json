@@ -1,12 +1,14 @@
 {
   "name": "log-output-reader",
   "version": "1.0.0",
-  "description": "Reads log content from a shared file and serves it via HTTP.",
+  "description": "Reads log file and fetches ping-pong counter",
   "main": "reader.js",
   "scripts": {
     "start": "node reader.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
   }
 }
+
