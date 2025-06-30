@@ -17,13 +17,10 @@ spec:
       volumes:
       - name: shared-logs-volume
         emptyDir: {}
-      - name: ping-pong-shared-data
-        persistentVolumeClaim:
-          claimName: shared-ping-pong-pvc
       containers:
       - name: logger-container
         image: honganmaki/log-output-logger:latest
-        imagePullPolicy: Never
+        imagePullPolicy: Always
         env:
         - name: LOG_FILE_DIR
           value: "/shared-logs"
@@ -32,18 +29,14 @@ spec:
           mountPath: /shared-logs
       - name: reader-container
         image: honganmaki/log-output-reader:latest
-        imagePullPolicy: Never
+        imagePullPolicy: Always
         env:
         - name: PORT
           value: "3000"
         - name: LOG_FILE_DIR
           value: "/shared-logs"
-        - name: PINGPONG_SHARED_VOLUME_PATH
-          value: "/mnt/shared-data"
         ports:
         - containerPort: 3000
         volumeMounts:
         - name: shared-logs-volume
-          mountPath: "/shared-logs"
-        - name: ping-pong-shared-data
-          mountPath: "/mnt/shared-data"
+          mountPath: /shared-logs
