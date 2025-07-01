@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: project
   name: todo-backend-deployment
   labels:
     app: todo-backend
@@ -17,7 +18,7 @@ spec:
       containers:
       - name: todo-backend-container
         image: honganmaki/todo-backend:latest
-        imagePullPolicy: always
+        imagePullPolicy: Always
         env:
         - name: PORT
           value: "3002"

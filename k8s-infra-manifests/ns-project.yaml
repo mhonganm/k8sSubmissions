@@ -1,0 +1,5 @@
+# namespace-project.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: project
