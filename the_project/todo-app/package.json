@@ -9,5 +9,10 @@
   "dependencies": {
     "express": "^4.19.2",
     "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "eslint": "^9.30.0",
+    "globals": "^16.2.0"
   }
 }

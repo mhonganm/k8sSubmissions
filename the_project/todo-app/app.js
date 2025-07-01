@@ -12,6 +12,8 @@ const CURRENT_IMAGE_METADATA_PATH = path.join(__dirname, 'image_metadata.json');
 
 let currentImageMetadata = null;
 
+const TODO_BACKEND_SERVICE_URL = '/api/todos';
+
 async function loadMetadata() {
     try {
         const data = await fs.readFile(CURRENT_IMAGE_METADATA_PATH, 'utf8');
@@ -77,9 +79,9 @@ app.use('/image', async (req, res, next) => {
             await loadMetadata();
         }
         if (!currentImageMetadata || !(await fs.access(CURRENT_IMAGE_PATH).then(() => true).catch(() => false))) {
-             console.log("[TODO-APP] Image not yet cached. Attempting to fetch...");
-             res.status(503).send('Image not yet available. Please try again shortly.');
-             return;
+            console.log("[TODO-APP] Image not yet cached. Attempting to fetch...");
+            res.status(503).send('Image not yet available. Please try again shortly.');
+            return;
         }
         res.sendFile(CURRENT_IMAGE_PATH);
     } catch (error) {
@@ -88,17 +90,8 @@ app.use('/image', async (req, res, next) => {
     }
 });
 
+
 app.get('/', (req, res) => {
-    // todos
-    const hardcodedTodos = [
-        "Todo 1",
-        "Todo 2",
-        "Todo 3",
-        "Todo 4"
-    ];
-
-    const todoListItems = hardcodedTodos.map(todo => `<li>${todo}</li>`).join('');
-
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -127,13 +120,15 @@ app.get('/', (req, res) => {
             <div class="todo-section">
                 <h2>Your Todos</h2>
                 <input type="text" id="todoInput" class="todo-input" maxlength="140" placeholder="Add a new todo (max 140 chars)">
-                <button id="sendTodoButton">Send Todo</button>
+                <button id="addTodoButton">Add Todo</button>
                 <ul id="todoList" class="todo-list">
-                    ${todoListItems}
                 </ul>
             </div>
 
             <script>
+                // Node.js will inject the URL here
+                const TODO_BACKEND_JS_URL = '${TODO_BACKEND_SERVICE_URL}'; // INJECTED VARIABLE HERE
+
                 function updateStatus() {
                     if (window.currentImageMetadata && window.currentImageMetadata.timestamp) {
                         const date = new Date(window.currentImageMetadata.timestamp);
@@ -161,16 +156,72 @@ app.get('/', (req, res) => {
                     setTimeout(fetchMetadata, 1000);
                 }
 
+                async function fetchAndRenderTodos() {
+                    try {
+                        const response = await fetch(TODO_BACKEND_JS_URL); // USE THE INJECTED VARIABLE
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch todos from backend');
+                        }
+                        const todos = await response.json();
+                        const todoListUl = document.getElementById('todoList');
+                        todoListUl.innerHTML = '';
+                        todos.forEach(todo => {
+                            const li = document.createElement('li');
+                            li.textContent = todo.text;
+                            todoListUl.appendChild(li);
+                        });
+                    } catch (error) {
+                        console.error('Error fetching and rendering todos from backend:', error);
+                    }
+                }
+
+                async function addTodo() {
+                    const todoInput = document.getElementById('todoInput');
+                    const todoText = todoInput.value.trim();
+
+                    if (todoText.length === 0) {
+                        alert('Todo cannot be empty!');
+                        return;
+                    }
+                    if (todoText.length > 140) {
+                        alert('Todo is too long! Max 140 characters.');
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(TODO_BACKEND_JS_URL, { // USE THE INJECTED VARIABLE
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ text: todoText })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Failed to add todo to backend');
+                        }
+
+                        todoInput.value = '';
+                        await fetchAndRenderTodos();
+                        console.log('Todo added successfully!');
+                    } catch (error) {
+                        console.error('Error adding todo to backend:', error);
+                        alert('Error adding todo to backend. Please check console.');
+                    }
+                }
+
                 document.addEventListener('DOMContentLoaded', () => {
                     fetchMetadata();
-                    // send
-                    document.getElementById('sendTodoButton').addEventListener('click', () => {
-                        const todoText = document.getElementById('todoInput').value;
-                        if (todoText.length > 140) {
-                            alert('Todo is too long! Max 140 characters.');
-                            return;
+                    fetchAndRenderTodos();
+
+                    document.getElementById('addTodoButton').addEventListener('click', addTodo);
+
+                    document.getElementById('todoInput').addEventListener('keypress', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            addTodo();
                         }
-                        console.log('Send button clicked for todo:', todoText);
                     });
                 });
 
@@ -179,7 +230,7 @@ app.get('/', (req, res) => {
         </body>
         </html>
     `);
-});
+}); 
 
 app.get('/metadata', (req, res) => {
     if (currentImageMetadata) {
@@ -190,8 +241,7 @@ app.get('/metadata', (req, res) => {
 });
 
 async function checkAndFetchImage() {
-
-    const fetchIntervalMs = 10 * 60 * 1000; 
+    const fetchIntervalMs = 5 * 60 * 1000;
     if (!currentImageMetadata || (Date.now() - currentImageMetadata.timestamp > fetchIntervalMs)) {
         await fetchAndCacheImage();
     }
@@ -199,7 +249,7 @@ async function checkAndFetchImage() {
 
 loadMetadata().then(() => {
     checkAndFetchImage();
-    setInterval(checkAndFetchImage, 10 * 60 * 1000);
+    setInterval(checkAndFetchImage, 5 * 60 * 1000);
 });
 
 app.listen(PORT, () => {

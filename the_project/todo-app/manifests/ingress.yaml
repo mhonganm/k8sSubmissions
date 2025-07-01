@@ -3,16 +3,25 @@ kind: Ingress
 metadata:
   name: todo-app-ingress
   annotations:
-    kubernetes.io/ingress.class: traefik
+    ingress.kubernetes.io/ssl-redirect: "false"
+    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
+  ingressClassName: traefik
   rules:
   - host: todo-app.k3d.local
     http:
       paths:
-      - path: /
-        pathType: Prefix
-        backend:
+      - backend:
           service:
             name: todo-app-service
             port:
               number: 80
+        path: /
+        pathType: Prefix
+      - backend:
+          service:
+            name: todo-backend-service
+            port:
+              number: 80
+        path: /api
+        pathType: Prefix
