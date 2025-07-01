@@ -5,6 +5,7 @@
 ### Chapter 3
 
 - [2.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/2.1)
+- [2.2.](https://github.com/mhonganm/k8sSubmissions/releases/tag/2.2)
 
 ### Chapter 2
 
