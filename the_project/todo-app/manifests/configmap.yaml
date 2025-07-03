@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: project
+data:
+  information.txt: |
+    This is a test message from information.txt.
+    It demonstrates ConfigMap file mounting.
+    The application name is Log output.
+
+
+  MESSAGE: "Hello there! ---ah general kenobi"

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: exercises
+data:
+  information.txt: |
+    message from information.txt.
+    The application name is Log output.
+    It demonstrates ConfigMap file mounting.
+
+  MESSAGE: "Hello There-- ah general kenobi"
