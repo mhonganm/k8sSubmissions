@@ -9,12 +9,40 @@ const PORT = process.env.PORT || 3000;
 const LOG_FILE_DIR = process.env.LOG_FILE_DIR || '/shared-logs';
 const LOG_FILE_PATH = path.join(LOG_FILE_DIR, 'log.txt');
 
-const PING_PONG_SERVICE_URL = 'http://ping-pong-service:80/pong-count';
+const PING_PONG_SERVICE_URL = 'http://ping-pong-service:80/pingpong';
+
+
+const CONFIG_MESSAGE = process.env.MESSAGE;
+
+const INFO_FILE_PATH = '/etc/config/information.txt';
+
+async function logConfigMapDataToStdout() {
+  try {
+    const infoFileContent = await fs.readFile(INFO_FILE_PATH, 'utf8');
+    console.log(`[READER] ConfigMap File Content (information.txt):\n${infoFileContent.trim()}`);
+  } catch (error) {
+    console.error(`[READER] Error reading ConfigMap file '${INFO_FILE_PATH}': ${error.message}`);
+  }
+  if (CONFIG_MESSAGE) {
+    console.log(`[READER] ConfigMap Environment Variable (MESSAGE): ${CONFIG_MESSAGE}`);
+  } else {
+    console.warn(`[READER] ConfigMap Environment Variable (MESSAGE) not found.`);
+  }
+}
 
 
 app.get('/status', async (req, res) => {
   let logFileContent = "Log file content not available.";
   let pingPongCounter = "N/A";
+  let infoFileConfigMap = "information.txt content not available.";
+  let messageConfigMap = CONFIG_MESSAGE || "MESSAGE env variable not set.";
+
+  try {
+    infoFileConfigMap = await fs.readFile(INFO_FILE_PATH, 'utf8');
+  } catch (error) {
+    console.error(`[READER] Error reading information.txt from ConfigMap volume: ${error.message}`);
+    infoFileConfigMap = `Error reading information.txt: ${error.message}`;
+  }
 
   try {
     logFileContent = await fs.readFile(LOG_FILE_PATH, 'utf8');
@@ -33,8 +61,14 @@ app.get('/status', async (req, res) => {
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const data = await response.json();
-    pingPongCounter = data.pongCount;
+    const dataText = await response.text();
+    const match = dataText.match(/(\d+)$/);
+    if (match) {
+        pingPongCounter = parseInt(match[1], 10);
+    } else {
+        pingPongCounter = dataText.trim();
+        console.warn(`[READER] Ping-pong response not a simple number: '${dataText.trim()}'`);
+    }
     console.log(`[READER] Fetched pong count from ping-pong app: ${pingPongCounter}`);
   } catch (error) {
     console.error(`[READER] Error fetching ping-pong counter from ${PING_PONG_SERVICE_URL}: ${error.message}`);
@@ -43,7 +77,7 @@ app.get('/status', async (req, res) => {
 
   const formattedLogLine = logFileContent.trim().split('\n').filter(line => line.length > 0).pop();
 
-  const finalOutput = `${formattedLogLine}.Ping / Pongs: ${pingPongCounter}`;
+  const finalOutput = `file content: ${infoFileConfigMap.trim()}\nenv variable: MESSAGE=${messageConfigMap}\n${formattedLogLine}.Ping / Pongs: ${pingPongCounter}`;
 
   res.type('text/plain').send(finalOutput);
 });
@@ -56,4 +90,5 @@ app.listen(PORT, () => {
   console.log(`[READER] Server started in port ${PORT}`);
   console.log(`[READER] Reading log-output logs from: ${LOG_FILE_PATH}`);
   console.log(`[READER] Will fetch ping-pong counter from: ${PING_PONG_SERVICE_URL}`);
+  logConfigMapDataToStdout();
 });
