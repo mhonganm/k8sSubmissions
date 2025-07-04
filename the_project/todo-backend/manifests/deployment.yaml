@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: todo-backend-container
-        image: todo-backend:latest
-        imagePullPolicy: Never
+        image: honganmaki/todo-backend:latest
+        imagePullPolicy: Always
         env:
         - name: PORT
           value: "3002"
