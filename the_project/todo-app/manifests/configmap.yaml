@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: log-output-config
+  name: project-config
   namespace: project
 data:
-  information.txt: |
-    This is a test message from information.txt.
-    It demonstrates ConfigMap file mounting.
-    The application name is Log output.
+  TODO_APP_PORT: "3000"
+  TODO_BACKEND_URL_PATH: "/api/todos"
+  IMAGE_BASE_URL: "https://placehold.co/1200x800.png?text="
+  IMAGE_FETCH_INTERVAL_MINUTES: "5"
+  TODO_MAX_LENGTH: "140"
 
-
-  MESSAGE: "Hello there! ---ah general kenobi"
+  TODO_BACKEND_PORT: "3002"

@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,17 +20,19 @@ spec:
       - name: cached-images-data
         persistentVolumeClaim:
           claimName: cached-images-pvc
+      - name: project-config-volume 
+        configMap:
+          name: project-config
       containers:
       - name: todo-app-container
-        image: honganmaki/todo-app:latest
-        imagePullPolicy: Always
-        env:
-        - name: PORT
-          value: "3000"
-        - name: IMAGE_CACHE_DIR
-          value: "/mnt/image-cache"
+        image: todo-app:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 3000
+        env:
+        envFrom:
+        - configMapRef:
+            name: project-config
         volumeMounts:
         - name: cached-images-data
           mountPath: /mnt/image-cache

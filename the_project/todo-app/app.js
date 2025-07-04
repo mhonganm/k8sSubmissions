@@ -5,14 +5,23 @@ const path = require('path');
 const https = require('https');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.TODO_APP_PORT || 3000;
 
 const CURRENT_IMAGE_PATH = path.join(__dirname, 'image.jpg');
 const CURRENT_IMAGE_METADATA_PATH = path.join(__dirname, 'image_metadata.json');
 
 let currentImageMetadata = null;
 
-const TODO_BACKEND_SERVICE_URL = '/api/todos';
+const TODO_BACKEND_SERVICE_URL = process.env.TODO_BACKEND_URL_PATH;
+
+const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'https://placehold.co/';
+const IMAGE_TEXT_PREFIX = process.env.IMAGE_TEXT_PREFIX || 'Image';
+const IMAGE_FETCH_INTERVAL_MS = parseInt(process.env.IMAGE_FETCH_INTERVAL_MINUTES || '5', 10) * 60 * 1000;
+const IMAGE_FETCH_TIMEOUT_MS = parseInt(process.env.IMAGE_FETCH_TIMEOUT_MS || '15000', 10);
+
+const TODO_MAX_LENGTH = parseInt(process.env.TODO_MAX_LENGTH || '140', 10);
+const APP_TITLE = process.env.APP_TITLE || 'Todo & Image App';
+
 
 async function loadMetadata() {
     try {
@@ -44,10 +53,10 @@ const agent = new https.Agent({
 async function fetchAndCacheImage() {
     console.log('[TODO-APP] Fetching new image...');
     try {
-        const imageUrl = `https://placehold.co/1200x800.png?text=Log+output+Image+${Date.now()}`;
+        const imageUrl = `${IMAGE_BASE_URL}1200x800.png?text=${encodeURIComponent(IMAGE_TEXT_PREFIX)}+${Date.now()}`;
         const response = await fetch(imageUrl, {
             agent: agent,
-            timeout: 15000
+            timeout: IMAGE_FETCH_TIMEOUT_MS
         });
 
         if (!response.ok) {
@@ -90,6 +99,10 @@ app.use('/image', async (req, res, next) => {
     }
 });
 
+function showMessage(message, type = 'info') {
+    console.log(`[TODO-APP Message] Type: ${type}, Message: ${message}`);
+}
+
 
 app.get('/', (req, res) => {
     res.send(`
@@ -98,7 +111,7 @@ app.get('/', (req, res) => {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Log output - Todo & Image App</title>
+            <title>${APP_TITLE}</title> <!-- Use env var for title -->
             <style>
                 body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }
                 img { max-width: 90%; height: auto; border: 2px solid #333; margin-bottom: 20px; }
@@ -109,17 +122,40 @@ app.get('/', (req, res) => {
                 .todo-input { width: 300px; padding: 8px; margin-bottom: 10px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
                 .todo-list { list-style: inside; padding: 0; text-align: left; }
                 .todo-list li { background-color: #fff; border: 1px solid #eee; margin-bottom: 5px; padding: 10px; border-radius: 4px; }
+                /* Message Box Styles */
+                .message-box {
+                    display: none; /* Hidden by default */
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    padding: 15px 25px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    z-index: 1000;
+                    font-size: 1.1em;
+                    color: white;
+                    background-color: #4CAF50; /* Default info color */
+                    opacity: 0.95;
+                    transition: opacity 0.3s ease-in-out;
+                }
+                .message-box.error { background-color: #f44336; }
+                .message-box.warning { background-color: #ff9800; }
             </style>
         </head>
         <body>
-            <h1>Your Random Image</h1>
+            <div id="messageBox" class="message-box">
+                <span id="messageText"></span>
+            </div>
+
+            <h1>${APP_TITLE}</h1> <!-- Use env var for H1 -->
             <img id="randomImage" src="/image" alt="Random Image">
             <button onclick="refreshImage()">New Image</button>
             <p class="status">Last fetched: <span id="lastFetched">N/A</span></p>
 
             <div class="todo-section">
                 <h2>Your Todos</h2>
-                <input type="text" id="todoInput" class="todo-input" maxlength="140" placeholder="Add a new todo (max 140 chars)">
+                <input type="text" id="todoInput" class="todo-input" maxlength="${TODO_MAX_LENGTH}" placeholder="Add a new todo (max ${TODO_MAX_LENGTH} chars)"> <!-- Use env var for maxlength -->
                 <button id="addTodoButton">Add Todo</button>
                 <ul id="todoList" class="todo-list">
                 </ul>
@@ -127,7 +163,20 @@ app.get('/', (req, res) => {
 
             <script>
                 // Node.js will inject the URL here
-                const TODO_BACKEND_JS_URL = '${TODO_BACKEND_SERVICE_URL}'; // INJECTED VARIABLE HERE
+                const TODO_BACKEND_JS_URL = '${TODO_BACKEND_SERVICE_URL}';
+                const JS_TODO_MAX_LENGTH = ${TODO_MAX_LENGTH}; // Pass max length to client-side JS
+
+                // Custom message box functions (client-side implementation)
+                function showMessage(message, type = 'info') {
+                    const messageBox = document.getElementById('messageBox');
+                    const messageText = document.getElementById('messageText');
+                    messageText.textContent = message;
+                    messageBox.className = 'message-box ' + type; // Using concatenation for VS Code
+                    messageBox.style.display = 'block';
+                    setTimeout(() => {
+                        messageBox.style.display = 'none';
+                    }, 3000);
+                }
 
                 function updateStatus() {
                     if (window.currentImageMetadata && window.currentImageMetadata.timestamp) {
@@ -158,7 +207,7 @@ app.get('/', (req, res) => {
 
                 async function fetchAndRenderTodos() {
                     try {
-                        const response = await fetch(TODO_BACKEND_JS_URL); // USE THE INJECTED VARIABLE
+                        const response = await fetch(TODO_BACKEND_JS_URL);
                         if (!response.ok) {
                             throw new Error('Failed to fetch todos from backend');
                         }
@@ -180,16 +229,16 @@ app.get('/', (req, res) => {
                     const todoText = todoInput.value.trim();
 
                     if (todoText.length === 0) {
-                        alert('Todo cannot be empty!');
+                        showMessage('Todo cannot be empty!', 'warning'); // Use custom message
                         return;
                     }
-                    if (todoText.length > 140) {
-                        alert('Todo is too long! Max 140 characters.');
+                    if (todoText.length > JS_TODO_MAX_LENGTH) { // Use client-side JS variable
+                        showMessage('Todo is too long! Max ' + JS_TODO_MAX_LENGTH + ' characters.', 'warning'); // Use custom message
                         return;
                     }
 
                     try {
-                        const response = await fetch(TODO_BACKEND_JS_URL, { // USE THE INJECTED VARIABLE
+                        const response = await fetch(TODO_BACKEND_JS_URL, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -205,9 +254,10 @@ app.get('/', (req, res) => {
                         todoInput.value = '';
                         await fetchAndRenderTodos();
                         console.log('Todo added successfully!');
+                        showMessage('Todo added successfully!', 'info'); // Success message
                     } catch (error) {
                         console.error('Error adding todo to backend:', error);
-                        alert('Error adding todo to backend. Please check console.');
+                        showMessage('Error adding todo to backend. Please check console.', 'error'); // Error message
                     }
                 }
 
@@ -230,7 +280,7 @@ app.get('/', (req, res) => {
         </body>
         </html>
     `);
-}); 
+});
 
 app.get('/metadata', (req, res) => {
     if (currentImageMetadata) {
@@ -241,15 +291,14 @@ app.get('/metadata', (req, res) => {
 });
 
 async function checkAndFetchImage() {
-    const fetchIntervalMs = 5 * 60 * 1000;
-    if (!currentImageMetadata || (Date.now() - currentImageMetadata.timestamp > fetchIntervalMs)) {
+    if (!currentImageMetadata || (Date.now() - currentImageMetadata.timestamp > IMAGE_FETCH_INTERVAL_MS)) {
         await fetchAndCacheImage();
     }
 }
 
 loadMetadata().then(() => {
     checkAndFetchImage();
-    setInterval(checkAndFetchImage, 5 * 60 * 1000);
+    setInterval(checkAndFetchImage, IMAGE_FETCH_INTERVAL_MS);
 });
 
 app.listen(PORT, () => {
