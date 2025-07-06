@@ -19,8 +19,30 @@ spec:
       - name: todo-backend-container
         image: honganmaki/todo-backend:latest
         imagePullPolicy: Always
+        ports:
+        - containerPort: 3002
         env:
         - name: PORT
           value: "3002"
-        ports:
-        - containerPort: 3002
+        - name: TODO_PG_HOST
+          value: "todo-postgres-db-service"
+        - name: TODO_PG_DATABASE
+          value: "tododb"
+        - name: TODO_PG_PORT
+          value: "5432"
+        - name: TODO_PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: todo-postgres-credentials
+              key: POSTGRES_USER
+        - name: TODO_PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: todo-postgres-credentials
+              key: POSTGRES_PASSWORD
+        - name: TODO_MAX_LENGTH
+          valueFrom:
+            configMapKeyRef:
+              name: project-config
+              key: TODO_MAX_LENGTH
+
