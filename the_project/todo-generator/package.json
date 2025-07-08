@@ -1,0 +1,13 @@
+{
+  "name": "random-todo-generator",
+  "version": "1.0.0",
+  "description": "A script to generate random Wikipedia todos",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "axios": "^1.6.8"
+  }
+}
