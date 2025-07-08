@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: project
   name: todo-backend-deployment
+  namespace: project
   labels:
     app: todo-backend
 spec:
@@ -45,4 +45,3 @@ spec:
             configMapKeyRef:
               name: project-config
               key: TODO_MAX_LENGTH
-

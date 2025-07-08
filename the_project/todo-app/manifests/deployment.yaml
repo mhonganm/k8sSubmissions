@@ -1,9 +1,15 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: project
   name: todo-app-deployment
+  labels:
+    app: todo-app
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-deployment
+  namespace: project
   labels:
     app: todo-app
 spec:
@@ -29,7 +35,6 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
-        env:
         envFrom:
         - configMapRef:
             name: project-config
