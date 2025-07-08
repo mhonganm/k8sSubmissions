@@ -12,6 +12,7 @@
 - [2.6.](https://github.com/mhonganm/k8sSubmissions/releases/tag/2.6)
 - [2.7.](https://github.com/mhonganm/k8sSubmissions/releases/tag/2.7)
 - [2.8.](https://github.com/mhonganm/k8sSubmissions/releases/tag/2.8)
+- [2.9.](https://github.com/mhonganm/k8sSubmissions/releases/tag/2.9)
 
 ### Chapter 2
 
