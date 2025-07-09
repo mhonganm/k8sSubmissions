@@ -12,7 +12,6 @@ const PG_PASSWORD = process.env.TODO_PG_PASSWORD || 'your_default_todo_pg_passwo
 const PG_DATABASE = process.env.TODO_PG_DATABASE || 'tododb';
 const PG_PORT = process.env.TODO_PG_PORT || 5432;
 
-
 const pool = new Pool({
   user: PG_USER,
   host: PG_HOST,
@@ -44,6 +43,42 @@ async function initializeDatabase() {
 app.use(cors());
 app.use(express.json());
 
+
+app.use((req, res, next) => {
+    const start = process.hrtime();
+    res.on('finish', () => {
+        const duration = process.hrtime(start);
+        const durationMs = (duration[0] * 1000 + duration[1] / 1e6).toFixed(2);
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            url: req.originalUrl,
+            statusCode: res.statusCode,
+            durationMs: parseFloat(durationMs),
+            ip: req.ip,
+            userAgent: req.get('User-Agent') || 'unknown'
+        };
+
+        if (req.originalUrl.startsWith('/api/todos')) {
+            if (req.method === 'POST') {
+                logEntry.body = req.body.text ? req.body.text.substring(0, 200) + (req.body.text.length > 200 ? '...' : '') : ''; // Log first 200 chars of todo text
+            }
+            console.log(`[TODO-BACKEND] Request Log: ${JSON.stringify(logEntry)}`);
+        } else {
+
+            console.log(`[TODO-BACKEND] Access Log: ${JSON.stringify({
+                timestamp: logEntry.timestamp,
+                method: logEntry.method,
+                url: logEntry.url,
+                statusCode: logEntry.statusCode,
+                durationMs: logEntry.durationMs
+            })}`);
+        }
+    });
+    next();
+});
+
+
 app.get('/healthz', async (req, res) => {
     try {
         const client = await pool.connect();
@@ -73,10 +108,14 @@ app.post('/api/todos', async (req, res) => {
     const { text } = req.body;
     if (!text || text.trim() === '') {
         console.log('[TODO-BACKEND] POST /api/todos - Error: Text cannot be empty');
+
+        console.error(`[TODO-BACKEND] Validation Error: Empty todo text from IP: ${req.ip}`);
         return res.status(400).json({ error: 'Todo text cannot be empty' });
     }
     if (text.length > TODO_MAX_LENGTH) {
         console.log(`[TODO-BACKEND] POST /api/todos - Error: Text too long (max ${TODO_MAX_LENGTH} chars)`);
+
+        console.error(`[TODO-BACKEND] Validation Error: Todo text too long from IP: ${req.ip}, Length: ${text.length}, Max: ${TODO_MAX_LENGTH}`);
         return res.status(400).json({ error: `Todo text too long, max ${TODO_MAX_LENGTH} characters` });
     }
 
@@ -86,9 +125,10 @@ app.post('/api/todos', async (req, res) => {
         client.release();
         const newTodo = result.rows[0];
         console.log('[TODO-BACKEND] POST /api/todos - Added:', newTodo);
+        console.log(`[TODO-BACKEND] Todo Added Successfully: id=${newTodo.id}, text="${newTodo.text}"`); // Specific success log
         res.status(201).json(newTodo);
     } catch (err) {
-        console.error('[TODO-BACKEND] Error adding todo:', err.message);
+        console.error('[TODO-BACKEND] Error adding todo to database:', err.message); // More specific error log
         res.status(500).json({ error: 'Error adding todo.' });
     }
 });
@@ -103,13 +143,15 @@ app.delete('/api/todos/:id', async (req, res) => {
 
         if (result.rowCount > 0) {
             console.log(`[TODO-BACKEND] DELETE /api/todos/${id} - Deleted successfully`);
+            console.log(`[TODO-BACKEND] Todo Deleted Successfully: id=${id}`); // Specific success log
             res.status(204).send();
         } else {
             console.log(`[TODO-BACKEND] DELETE /api/todos/${id} - Error: Todo not found`);
+            console.error(`[TODO-BACKEND] Deletion Error: Todo id=${id} not found.`); // Specific error log
             res.status(404).json({ error: 'Todo not found' });
         }
     } catch (err) {
-        console.error('[TODO-BACKEND] Error deleting todo:', err.message);
+        console.error('[TODO-BACKEND] Error deleting todo from database:', err.message); // More specific error log
         res.status(500).json({ error: 'Error deleting todo.' });
     }
 });
