@@ -1,0 +1,264 @@
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: exercises
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: exercises
+data:
+  information.txt: |
+    message from information.txt.
+    The application name is Log output.
+    It demonstrates ConfigMap file mounting.
+
+  MESSAGE: "Hello There-- ah general kenobi"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: exercises
+type: Opaque
+data:
+  POSTGRES_USER: cG9zdGdyZXM=
+  POSTGRES_PASSWORD: Q2VwdGVuOTEh
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-output-deployment
+  namespace: exercises
+  labels:
+    app: log-output
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-output
+  template:
+    metadata:
+      labels:
+        app: log-output
+    spec:
+      volumes:
+      - name: shared-logs-volume
+        emptyDir: {}
+      - name: config-volume
+        configMap:
+          name: log-output-config
+      containers:
+      - name: logger-container
+        image: honganmaki/log-output-logger:latest
+        env:
+        - name: LOG_FILE_DIR
+          value: "/shared-logs"
+        volumeMounts:
+        - name: shared-logs-volume
+          mountPath: "/shared-logs"
+      - name: reader-container
+        image: honganmaki/log-output-reader:latest
+        env:
+        - name: PORT
+          value: "3000"
+        - name: LOG_FILE_DIR
+          value: "/shared-logs"
+        - name: MESSAGE
+          valueFrom:
+            configMapKeyRef:
+              name: log-output-config
+              key: MESSAGE
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: shared-logs-volume
+          mountPath: "/shared-logs"
+        - name: config-volume
+          mountPath: "/etc/config"
+          readOnly: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: exercises
+  name: ping-pong-deployment
+  labels:
+    app: ping-pong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ping-pong
+  template:
+    metadata:
+      labels:
+        app: ping-pong
+    spec:
+      containers:
+      - name: ping-pong-container
+        image: honganmaki/ping-pong:latest
+        ports:
+        - containerPort: 3001
+        env:
+        - name: PORT
+          value: "3001"
+        - name: PG_HOST
+          value: "postgres-db-service"
+        - name: PG_DATABASE
+          value: "pingpongdb"
+        - name: PG_PORT
+          value: "5432"
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        readinessProbe:
+          httpGet:
+            path: /pingpong
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 3
+--- 
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-db
+  namespace: exercises
+spec:
+  serviceName: "postgres-db-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      labels:
+        app: postgres-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16.2-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres-port
+        env:
+        - name: POSTGRES_DB
+          value: "pingpongdb"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: exercises
+  name: log-output-service
+  labels:
+    app: log-output
+spec:
+  selector:
+    app: log-output
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db-service
+  namespace: exercises
+  labels:
+    app: postgres-db
+spec:
+  selector:
+    app: postgres-db
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: postgres-port
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: exercises
+  name: ping-pong-service
+  labels:
+    app: ping-pong
+spec:
+  selector:
+    app: ping-pong
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: log-output-ingress
+  namespace: exercises
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /status
+        pathType: Prefix
+        backend:
+          service:
+            name: log-output-service
+            port:
+              number: 80
+      - path: /pingpong
+        pathType: Prefix
+        backend:
+          service:
+            name: ping-pong-service
+            port:
+              number: 80
