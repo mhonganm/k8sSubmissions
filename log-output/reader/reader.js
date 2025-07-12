@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const LOG_FILE_DIR = process.env.LOG_FILE_DIR || '/shared-logs';
 const LOG_FILE_PATH = path.join(LOG_FILE_DIR, 'log.txt');
 
-const PING_PONG_SERVICE_URL = 'http://ping-pong-service:80/pingpong';
+const PING_PONG_SERVICE_URL = 'http://ping-pong-service:80/';
 
 
 const CONFIG_MESSAGE = process.env.MESSAGE;

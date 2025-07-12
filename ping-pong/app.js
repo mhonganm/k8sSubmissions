@@ -46,7 +46,8 @@ async function initializeDatabase() {
   }
 }
 
-app.get('/pingpong', async (req, res) => {
+
+app.get('/', async (req, res) => {
   try {
     const client = await pool.connect();
     await client.query('BEGIN');
@@ -60,10 +61,11 @@ app.get('/pingpong', async (req, res) => {
     res.send(`pong ${currentCount}`);
     console.log(`[PING-PONG] Ping-pong counter incremented to: ${currentCount}`);
   } catch (err) {
-    console.error('[PING-PONG] Error processing /pingpong:', err.message);
-    res.status(500).send('Error processing pingpong request.');
+    console.error('[PING-PONG] Error processing /:', err.message); 
+    res.status(500).send('Error processing pingpong request.'); 
   }
 });
+
 
 app.get('/pong-count', async (req, res) => {
   try {
@@ -78,12 +80,6 @@ app.get('/pong-count', async (req, res) => {
     console.error('[PING-PONG] Error fetching /pong-count:', err.message);
     res.status(500).json({ error: 'Error fetching pong count.' });
   }
-});
-
-
-app.get('/', (req, res) => {
-  res.status(200).send('OK - Ping-Pong Health Check');
-  console.log('[PING-PONG] Responded to root path health check.');
 });
 
 
