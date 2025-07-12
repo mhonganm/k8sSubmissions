@@ -99,7 +99,6 @@ spec:
       containers:
       - name: ping-pong-container
         image: honganmaki/ping-pong:latest
-        imagePullPolicy: Always
         ports:
         - containerPort: 3001
         env:
@@ -121,9 +120,9 @@ spec:
             secretKeyRef:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
-        readinessProbe: # This probe is for Kubernetes internal health, not the Load Balancer
+        readinessProbe: 
           httpGet:
-            path: /pingpong
+            path: / 
             port: 3001
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -230,7 +229,6 @@ metadata:
   name: ping-pong-service
   labels:
     app: ping-pong
-  # Removed: cloud.google.com/backend-config annotation
 spec:
   selector:
     app: ping-pong
@@ -276,6 +274,12 @@ spec:
     - path:
         type: PathPrefix
         value: /pingpong
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch 
+          replacePrefixMatch: / 
     backendRefs:
     - name: ping-pong-service
       port: 80
