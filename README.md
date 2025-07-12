@@ -6,6 +6,7 @@
 
 - [3.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.1)
 - [3.2.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.2)
+- [3.3.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.3)
 
 ### Chapter 3
 
