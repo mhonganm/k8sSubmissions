@@ -80,6 +80,13 @@ app.get('/pong-count', async (req, res) => {
   }
 });
 
+
+app.get('/', (req, res) => {
+  res.status(200).send('OK - Ping-Pong Health Check');
+  console.log('[PING-PONG] Responded to root path health check.');
+});
+
+
 app.listen(PORT, async () => {
   console.log(`Ping-pong server started in port ${PORT}`);
   await initializeDatabase();
