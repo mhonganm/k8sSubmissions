@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: todo-postgres-db
+  namespace: project
+spec:
+  serviceName: "todo-postgres-db-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-postgres-db
+  template:
+    metadata:
+      labels:
+        app: todo-postgres-db
+    spec:
+      containers:
+      - name: todo-postgres
+        image: postgres:16.2-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres-port
+        env:
+        - name: POSTGRES_DB
+          value: "tododb"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: todo-postgres-credentials
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: todo-postgres-credentials
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: todo-postgres-data
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command: ["pg_isready", "-U", "todouser", "-d", "tododb"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "todouser", "-d", "tododb"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: todo-postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: local-path
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-postgres-db-service
+  namespace: project
+  labels:
+    app: todo-postgres-db
+spec:
+  selector:
+    app: todo-postgres-db
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: postgres-port
+  type: ClusterIP

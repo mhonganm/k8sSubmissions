@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # ns
+  - manifests/ns.yaml
+
+  # Secrets and CM
+  - todo-backend/secret.yaml
+  - todo-app/configmap.yaml
+
+  # DB
+  - todo-backend/postgre.yaml 
+  - todo-backend/service.yaml 
+                                       
+  # App
+  - todo-backend/deployment.yaml 
+  - todo-app/service.yaml
+  - todo-app/deployment.yaml
+
+  # Ingress/Gateway
+  - todo-app/ingress.yaml
+
+  # CronJobs/Jobs
+  - todo-generator/cronjob.yaml
