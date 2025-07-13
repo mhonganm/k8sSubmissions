@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: project-config
+  namespace: project
+data:
+  TODO_APP_PORT: "3000"
+  TODO_BACKEND_URL_PATH: "/api/todos"
+  IMAGE_BASE_URL: "https://placehold.co/1200x800.png?text="
+  IMAGE_FETCH_INTERVAL_MINUTES: "5"
+  TODO_MAX_LENGTH: "140"
+
+  TODO_BACKEND_PORT: "3002"
