@@ -5,20 +5,20 @@ resources:
   - manifests/ns.yaml
 
   # Secrets and CM
-  - todo-backend/secret.yaml
-  - todo-app/configmap.yaml
+  - todo-backend/manifests/secret.yaml
+  - todo-app/manifests/configmap.yaml
 
   # DB
-  - todo-backend/postgre.yaml 
-  - todo-backend/service.yaml 
+  - todo-backend/manifests/postgre.yaml 
+  - todo-backend/manifests/service.yaml 
                                        
   # App
-  - todo-backend/deployment.yaml 
-  - todo-app/service.yaml
-  - todo-app/deployment.yaml
+  - todo-backend/manifests/deployment.yaml 
+  - todo-app/manifests/service.yaml
+  - todo-app/manifests/deployment.yaml
 
   # Ingress/Gateway
-  - todo-app/ingress.yaml
+  - todo-app/manifests/ingress.yaml
 
   # CronJobs/Jobs
-  - todo-generator/cronjob.yaml
+  - todo-generator/manifests/cronjob.yaml
