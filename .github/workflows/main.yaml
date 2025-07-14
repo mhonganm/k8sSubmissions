@@ -3,19 +3,17 @@ name: Release application
 on:
   push:
     branches:
-      - main # Trigger on pushes to the main branch
+      - main
   pull_request:
     branches:
-      - main # Optional: Trigger on pull requests for CI checks
+      - main
 
 env:
-  PROJECT_ID: ${{ secrets.GKE_PROJECT }} # Your Google Cloud Project ID from GitHub Secret
-  GKE_CLUSTER: dwk-cluster # Your GKE cluster name
-  GKE_ZONE: europe-north1-b # Your GKE cluster zone
-  ARTIFACT_REGISTRY_LOCATION: europe-north1 # Your Artifact Registry region (e.g., europe-north1)
-  ARTIFACT_REGISTRY_REPO: honganmakirepo # Your Artifact Registry repository name
-
-  # Specific image names and paths for your Dockerfiles (relative to repository root)
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b
+  ARTIFACT_REGISTRY_LOCATION: europe-north1
+  ARTIFACT_REGISTRY_REPO: honganmakirepo
   TODO_BACKEND_IMAGE_NAME: todo-backend
   TODO_BACKEND_DOCKERFILE_PATH: project-in-cloud/todo-backend/
   TODO_APP_IMAGE_NAME: todo-app
@@ -28,35 +26,27 @@ jobs:
     name: Build, Publish and Deploy
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read' # Required for checking out code
-      # 'id-token: write' is not needed if using credentials_json for auth
+      contents: 'read'
+      id-token: 'write'
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # --- Authentication and Cloud SDK Setup ---
       - uses: google-github-actions/auth@v2
         with:
-          # If you were using Workload Identity Federation, this path would be here:
-          # workload_identity_provider: projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
-          # service_account: github-actions-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
-          #
-          # Since you chose Service Account Key authentication:
-          credentials_json: '${{ secrets.GKE_SA_KEY }}' # Using Service Account Key from GitHub Secret
+          credentials_json: '${{ secrets.GKE_SA_KEY }}'
 
       - name: 'Set up Cloud SDK'
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.PROJECT_ID }} # Uses the project ID from env
+          project_id: ${{ env.PROJECT_ID }}
 
       - name: 'Use gcloud CLI'
         run: gcloud info
 
       - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
-
-    # --- Build and Publish Docker Images ---
 
       - name: Form todo-backend image tag
         run: echo "TODO_BACKEND_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_BACKEND_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
@@ -85,8 +75,6 @@ jobs:
       - name: Publish todo-generator Docker Image
         run: docker push ${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
 
-    # --- Deploy to GKE Cluster ---
-
       - name: Get GKE credentials
         uses: 'google-github-actions/get-gke-credentials@v2'
         with:
@@ -95,23 +83,20 @@ jobs:
           location: '${{ env.GKE_ZONE }}'
 
       - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@v2.1.0 # Using the specified action
+        uses: imranismail/setup-kustomize@v2.1.0
 
       - name: Update Kustomization image tags and Deploy
-        working-directory: project-in-cloud/ # Ensure this is the root directory where your kustomization.yaml is located
+        working-directory: project-in-cloud/
         run: |
-          # Update image tags in your kustomization.yaml to point to the new images in Artifact Registry
-          # This requires your kustomization.yaml to have an 'images:' block for each image.
           kustomize edit set image ${{ env.TODO_BACKEND_IMAGE_NAME }}=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
-
-          # Apply the kustomized manifests to the cluster
+          
           kustomize build . | kubectl apply -f -
-
-          # Wait for each deployment to roll out and confirm success
-          # IMPORTANT: Replace 'todo-backend-deployment', 'todo-app-deployment', 'todo-generator-deployment'
-          # with the actual names of your Deployment resources in your YAML files.
+          
+          echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
+          sleep 10s
+          
           echo "Waiting for todo-backend deployment to roll out..."
           kubectl rollout status deployment/todo-backend-deployment --timeout=5m
           echo "Waiting for todo-app deployment to roll out..."
@@ -119,6 +104,5 @@ jobs:
           echo "Waiting for todo-generator deployment to roll out..."
           kubectl rollout status deployment/todo-generator-deployment --timeout=5m
 
-          # Get service information to confirm external access (if applicable)
           echo "Service information:"
           kubectl get services -o wide
