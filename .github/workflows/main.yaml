@@ -3,7 +3,7 @@ name: Release application
 on:
   push:
     branches:
-      - main
+      - '*'
   pull_request:
     branches:
       - main
@@ -33,6 +33,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Set Kubernetes Namespace
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "K8S_NAMESPACE=project" >> $GITHUB_ENV
+          else
+            echo "K8S_NAMESPACE=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GKE_SA_KEY }}'
@@ -48,32 +56,26 @@ jobs:
       - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
 
-      - name: Form todo-backend image tag
-        run: echo "TODO_BACKEND_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_BACKEND_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
+      - name: Build and Publish todo-backend Docker Image
+        run: |
+          TODO_BACKEND_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $TODO_BACKEND_FULL_IMAGE_TAG ${{ env.TODO_BACKEND_DOCKERFILE_PATH }}
+          docker push $TODO_BACKEND_FULL_IMAGE_TAG
+          echo "TODO_BACKEND_FULL_IMAGE_TAG=$TODO_BACKEND_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Build todo-backend Docker Image
-        run: docker build --tag ${{ env.TODO_BACKEND_FULL_IMAGE_TAG }} ${{ env.TODO_BACKEND_DOCKERFILE_PATH }}
+      - name: Build and Publish todo-app Docker Image
+        run: |
+          TODO_APP_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_APP_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $TODO_APP_FULL_IMAGE_TAG ${{ env.TODO_APP_DOCKERFILE_PATH }}
+          docker push $TODO_APP_FULL_IMAGE_TAG
+          echo "TODO_APP_FULL_IMAGE_TAG=$TODO_APP_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Publish todo-backend Docker Image
-        run: docker push ${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
-
-      - name: Form todo-app image tag
-        run: echo "TODO_APP_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_APP_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Build todo-app Docker Image
-        run: docker build --tag ${{ env.TODO_APP_FULL_IMAGE_TAG }} ${{ env.TODO_APP_DOCKERFILE_PATH }}
-
-      - name: Publish todo-app Docker Image
-        run: docker push ${{ env.TODO_APP_FULL_IMAGE_TAG }}
-
-      - name: Form todo-generator image tag
-        run: echo "TODO_GENERATOR_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_GENERATOR_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Build todo-generator Docker Image
-        run: docker build --tag ${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }} ${{ env.TODO_GENERATOR_DOCKERFILE_PATH }}
-
-      - name: Publish todo-generator Docker Image
-        run: docker push ${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
+      - name: Build and Publish todo-generator Docker Image
+        run: |
+          TODO_GENERATOR_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_GENERATOR_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $TODO_GENERATOR_FULL_IMAGE_TAG ${{ env.TODO_GENERATOR_DOCKERFILE_PATH }}
+          docker push $TODO_GENERATOR_FULL_IMAGE_TAG
+          echo "TODO_GENERATOR_FULL_IMAGE_TAG=$TODO_GENERATOR_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Get GKE credentials
         uses: 'google-github-actions/get-gke-credentials@v2'
@@ -81,6 +83,10 @@ jobs:
           cluster_name: '${{ env.GKE_CLUSTER }}'
           project_id: '${{ env.PROJECT_ID }}'
           location: '${{ env.GKE_ZONE }}'
+
+      - name: Create Namespace if it doesn't exist
+        run: kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+        continue-on-error: true
 
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v2.1.0
@@ -92,15 +98,15 @@ jobs:
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
 
-          kustomize build . | kubectl apply -f -
+          kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
           sleep 10s
 
           echo "Waiting for todo-backend deployment to roll out..."
-          kubectl rollout status deployment/todo-backend-deployment -n project --timeout=5m
+          kubectl rollout status deployment/todo-backend-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
           echo "Waiting for todo-app deployment to roll out..."
-          kubectl rollout status deployment/todo-app-deployment -n project --timeout=5m
+          kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
-          echo "Service information:"
-          kubectl get services -o wide
+      - name: Get service information to confirm external access
+        run: kubectl get services -n ${{ env.K8S_NAMESPACE }} -o wide

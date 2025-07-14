@@ -2,15 +2,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: todo-app-ingress
-  namespace: project
   annotations:
     ingress.kubernetes.io/ssl-redirect: "false"
-    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
-  ingressClassName: traefik
   rules:
-  - host: todo-app.k3d.local
-    http:
+  - http:
       paths:
       - path: /
         pathType: Prefix

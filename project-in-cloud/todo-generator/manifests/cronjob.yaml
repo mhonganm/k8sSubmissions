@@ -3,7 +3,6 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: random-todo-generator-job
-  namespace: project
 spec:
   schedule: "0 * * * *"
   jobTemplate:
