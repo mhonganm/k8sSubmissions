@@ -8,6 +8,9 @@ resources:
   - todo-backend/manifests/secret.yaml
   - todo-app/manifests/configmap.yaml
 
+  # Add the PVC and PV here
+  - todo-app/manifests/images-pv.yaml
+
   # DB
   - todo-backend/manifests/postgre.yaml 
   - todo-backend/manifests/service.yaml 
