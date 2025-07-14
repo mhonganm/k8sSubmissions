@@ -26,7 +26,7 @@ spec:
           name: project-config
       containers:
       - name: todo-app-container
-        image: honganmaki/todo-app:latest
+        image: todo-app:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

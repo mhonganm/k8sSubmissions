@@ -1,23 +1,23 @@
-# random-todo-cronjob.yaml
+
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: random-todo-generator-job
-  namespace: project # Place in the 'project' namespace where your todo-backend is
+  namespace: project
 spec:
-  schedule: "0 * * * *" # Run every hour at the 0th minute (e.g., 1:00, 2:00, etc.)
+  schedule: "0 * * * *"
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: todo-generator
-            image: random-todo-generator:latest # The image we just built
-            imagePullPolicy: Never # Use Never for locally imported images
+            image: todo-generator:latest
+            imagePullPolicy: Always
             env:
             - name: TODO_BACKEND_URL
-              value: "http://todo-backend-service:80/api/todos" # CORRECTED: Changed port to 80 (Service Port)
-            - name: RANDOM_FACT_API_URL # Using simple HTTP API for now
+              value: "http://todo-backend-service:80/api/todos"
+            - name: RANDOM_FACT_API_URL
               value: "http://numbersapi.com/random/trivia"
           restartPolicy: OnFailure
   concurrencyPolicy: Forbid
