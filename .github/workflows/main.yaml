@@ -91,18 +91,18 @@ jobs:
           kustomize edit set image ${{ env.TODO_BACKEND_IMAGE_NAME }}=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
-          
+
           kustomize build . | kubectl apply -f -
-          
+
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
           sleep 10s
-          
+
           echo "Waiting for todo-backend deployment to roll out..."
-          kubectl rollout status deployment/todo-backend-deployment --timeout=5m
+          kubectl rollout status deployment/todo-backend-deployment -n project --timeout=5m
           echo "Waiting for todo-app deployment to roll out..."
-          kubectl rollout status deployment/todo-app-deployment --timeout=5m
+          kubectl rollout status deployment/todo-app-deployment -n project --timeout=5m
           echo "Waiting for todo-generator deployment to roll out..."
-          kubectl rollout status deployment/todo-generator-deployment --timeout=5m
+          kubectl rollout status deployment/todo-generator-deployment -n project --timeout=5m
 
           echo "Service information:"
-          kubectl get services -o wide
+          kubectl get services -o 
