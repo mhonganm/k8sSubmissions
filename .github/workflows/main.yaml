@@ -105,4 +105,4 @@ jobs:
           kubectl rollout status deployment/todo-generator-deployment -n project --timeout=5m
 
           echo "Service information:"
-          kubectl get services -o 
+          kubectl get services -o wide
