@@ -4,8 +4,6 @@ kind: Kustomization
 namespace: ${{ env.K8S_NAMESPACE }} # <--- ADD THIS LINE
 
 resources:
-  # ns
-  - manifests/ns.yaml
 
   # Secrets and CM
   - todo-backend/manifests/secret.yaml
