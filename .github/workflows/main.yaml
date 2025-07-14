@@ -110,3 +110,4 @@ jobs:
 
       - name: Get service information to confirm external access
         run: kubectl get services -n ${{ env.K8S_NAMESPACE }} -o wide
+# tricker 
