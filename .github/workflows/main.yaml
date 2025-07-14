@@ -17,11 +17,11 @@ env:
 
   # Specific image names and paths for your Dockerfiles (relative to repository root)
   TODO_BACKEND_IMAGE_NAME: todo-backend
-  TODO_BACKEND_DOCKERFILE_PATH: todo-backend/
+  TODO_BACKEND_DOCKERFILE_PATH: project-in-cloud/todo-backend/
   TODO_APP_IMAGE_NAME: todo-app
-  TODO_APP_DOCKERFILE_PATH: todo-app/
+  TODO_APP_DOCKERFILE_PATH: project-in-cloud/todo-app/
   TODO_GENERATOR_IMAGE_NAME: todo-generator
-  TODO_GENERATOR_DOCKERFILE_PATH: todo-generator/
+  TODO_GENERATOR_DOCKERFILE_PATH: project-in-cloud/todo-generator/
 
 jobs:
   build-publish-deploy:
@@ -98,7 +98,7 @@ jobs:
         uses: imranismail/setup-kustomize@v2.1.0 # Using the specified action
 
       - name: Update Kustomization image tags and Deploy
-        working-directory: ./ # Ensure this is the root directory where your kustomization.yaml is located
+        working-directory: project-in-cloud/ # Ensure this is the root directory where your kustomization.yaml is located
         run: |
           # Update image tags in your kustomization.yaml to point to the new images in Artifact Registry
           # This requires your kustomization.yaml to have an 'images:' block for each image.
