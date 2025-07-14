@@ -101,8 +101,6 @@ jobs:
           kubectl rollout status deployment/todo-backend-deployment -n project --timeout=5m
           echo "Waiting for todo-app deployment to roll out..."
           kubectl rollout status deployment/todo-app-deployment -n project --timeout=5m
-          echo "Waiting for todo-generator deployment to roll out..."
-          kubectl rollout status deployment/todo-generator-deployment -n project --timeout=5m
 
           echo "Service information:"
           kubectl get services -o wide
