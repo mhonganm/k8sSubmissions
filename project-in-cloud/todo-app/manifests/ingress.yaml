@@ -4,6 +4,7 @@ metadata:
   name: todo-app-ingress
   annotations:
     ingress.kubernetes.io/ssl-redirect: "false"
+    ingress.kubernetes.io/health-check-path: /healthz
 spec:
   rules:
   - http:
