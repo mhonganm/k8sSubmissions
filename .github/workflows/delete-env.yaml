@@ -1,0 +1,32 @@
+name: Delete Environment on Branch Deletion
+
+on:
+  delete:
+    branches:
+      - '**'
+
+jobs:
+  delete-namespace:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get branch name
+      id: get_branch
+      run: echo "branch_name=${{ github.event.ref_name }}" >> $GITHUB_OUTPUT
+
+    - name: Configure Google Cloud Credentials
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GKE_SA_KEY }}
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: dwk-cluster
+        location: europe-north1-b 
+
+    - name: Delete Kubernetes Namespace
+      run: |
+        echo "Deleting namespace for branch: ${{ steps.get_branch.outputs.branch_name }}"
+        kubectl delete namespace ${{ steps.get_branch.outputs.branch_name }}
+      env:
+        KUBECTL_CONFIG_PATH: ${{ steps.get_credentials.outputs.kubeconfig_path }}
