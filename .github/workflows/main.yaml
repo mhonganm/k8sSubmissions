@@ -98,6 +98,7 @@ jobs:
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
 
+          kustomize build .
           kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
@@ -110,4 +111,3 @@ jobs:
 
       - name: Get service information to confirm external access
         run: kubectl get services -n ${{ env.K8S_NAMESPACE }} -o wide
-# tricker 
