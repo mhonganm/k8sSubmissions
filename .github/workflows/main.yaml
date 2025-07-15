@@ -95,11 +95,16 @@ jobs:
       - name: Update Kustomization image tags and Deploy
         working-directory: project-in-cloud/
         run: |
+          # The correct way to set the namespace dynamically
+          kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
           kustomize edit set image ${{ env.TODO_BACKEND_IMAGE_NAME }}=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
 
+          # The debug step to show the output
           kustomize build .
+          
+          # The deployment command
           kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
