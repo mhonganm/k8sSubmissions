@@ -1,28 +1,27 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
 
   # Secrets and CM
-  - todo-backend/manifests/secret.yaml
-  - todo-app/manifests/configmap.yaml
 
   # Persistent Volume Claim for todo-app
-  - todo-app/manifests/images-pv.yaml
 
   # DB
-  - todo-backend/manifests/postgre.yaml
-  - todo-backend/manifests/service.yaml
 
   # App
-  - todo-backend/manifests/deployment.yaml
-  - todo-app/manifests/service.yaml
-  - todo-app/manifests/deployment.yaml
 
   # Ingress/Gateway
-  - todo-app/manifests/ingress.yaml
 
   # CronJobs/Jobs
-  - todo-generator/manifests/cronjob.yaml
-
-# just a tricker
+resources:
+- todo-backend/manifests/secret.yaml
+- todo-app/manifests/configmap.yaml
+- todo-app/manifests/images-pv.yaml
+- todo-backend/manifests/postgre.yaml
+- todo-backend/manifests/service.yaml
+- todo-backend/manifests/deployment.yaml
+- todo-app/manifests/service.yaml
+- todo-app/manifests/deployment.yaml
+- todo-app/manifests/ingress.yaml
+- todo-generator/manifests/cronjob.yaml
+namespace: 2-redeploy
