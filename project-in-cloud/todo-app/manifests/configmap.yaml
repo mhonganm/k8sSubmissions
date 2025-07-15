@@ -10,3 +10,4 @@ data:
   TODO_MAX_LENGTH: "140"
 
   TODO_BACKEND_PORT: "3002"
+  REACT_APP_BACKEND_URL: "http://todo-backend-service"
