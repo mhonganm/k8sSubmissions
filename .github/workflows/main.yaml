@@ -38,7 +38,8 @@ jobs:
           if [ "${{ github.ref_name }}" == "main" ]; then
             echo "K8S_NAMESPACE=project" >> $GITHUB_ENV
           else
-            echo "K8S_NAMESPACE=${{ github.ref_name }}" >> $GITHUB_ENV
+            SAFE_REF_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-')
+            echo "K8S_NAMESPACE=$SAFE_REF_NAME" >> $GITHUB_ENV
           fi
 
       - uses: google-github-actions/auth@v2
