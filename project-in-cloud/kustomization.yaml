@@ -24,3 +24,5 @@ resources:
 
   # CronJobs/Jobs
   - todo-generator/manifests/cronjob.yaml
+
+# just a tricker
