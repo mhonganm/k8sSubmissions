@@ -6,6 +6,7 @@ resources:
 - todo-app/manifests/images-pv.yaml
 - todo-backend/manifests/postgre.yaml
 - todo-backend/manifests/service.yaml
+- todo-backend/manifests/backend-config.yaml
 - todo-backend/manifests/deployment.yaml
 - todo-app/manifests/service.yaml
 - todo-app/manifests/deployment.yaml
