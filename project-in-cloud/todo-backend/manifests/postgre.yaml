@@ -35,6 +35,7 @@ spec:
         volumeMounts:
         - name: todo-postgres-data
           mountPath: /var/lib/postgresql/data
+          subPath: data
         livenessProbe:
           exec:
             command: ["pg_isready", "-U", "todouser", "-d", "tododb"]
