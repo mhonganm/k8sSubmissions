@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: todo-db-backup
+spec:
+  schedule: "0 0 * * *" 
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: db-backup-container
+            image: google/cloud-sdk:latest
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: todo-postgres-credentials
+                  key: POSTGRES_PASSWORD
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: todo-postgres-credentials
+                  key: POSTGRES_USER
+            - name: PGHOST
+              value: todo-postgres-db-service
+            - name: PGDATABASE
+              value: tododb
+            - name: PGPORT
+              value: "5432"
+            - name: GCS_BUCKET_NAME 
+              value: "dockerdb-backup"
+            command: ["/bin/bash", "-c"]
+            args:
+              - |
+                # Authenticate gcloud with the service account key
+                gcloud auth activate-service-account --key-file=/etc/gcloud/key.json
+
+                # Generate a timestamped backup filename
+                BACKUP_FILE="todo_backup_$(date +%Y%m%d_%H%M%S).sql"
+
+                # Perform the pg_dump
+                # The -Fc flag creates a custom format archive, which is more flexible for restore
+                # The -v flag provides verbose output
+                pg_dump -Fc -v -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE > /tmp/$BACKUP_FILE
+
+                # Upload the backup to GCS
+                gsutil cp /tmp/$BACKUP_FILE gs://${GCS_BUCKET_NAME}/$BACKUP_FILE
+
+                echo "Backup completed and uploaded to gs://${GCS_BUCKET_NAME}/$BACKUP_FILE"
+            volumeMounts:
+            - name: gcs-key-volume
+              mountPath: /etc/gcloud
+              readOnly: true
+          volumes:
+          - name: gcs-key-volume
+            secret:
+              secretName: gcs-backup-key
+          restartPolicy: OnFailure

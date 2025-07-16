@@ -89,6 +89,19 @@ jobs:
         run: kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
         continue-on-error: true
 
+      - name: Inject GCS Service Account Key
+        working-directory: project-in-cloud/
+        run: |
+          # Base64 encode the service account JSON secret, preventing line wrapping
+          ENCODED_KEY=$(echo '${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}' | base64 -w 0)
+          
+          # Replace the placeholder in the backup secret YAML file
+          # The path is relative to the 'working-directory' (project-in-cloud/)
+          # Ensure 'backupsecret.yaml' is in 'todo-backend/manifests/'
+          sed -i "s|GCS_SA_KEY_PLACEHOLDER|$ENCODED_KEY|" todo-backend/manifests/backupsecret.yaml
+        env:
+          GCS_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}
+
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v2.1.0
 

@@ -11,4 +11,6 @@ resources:
 - todo-app/manifests/service.yaml
 - todo-app/manifests/deployment.yaml
 - todo-app/manifests/ingress.yaml
+- todo-backend/manifests/cronjob.yaml
 - todo-generator/manifests/cronjob.yaml
+- todo-backend/manifests/backupsecret.yaml 
