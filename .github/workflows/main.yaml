@@ -1,4 +1,4 @@
-name: Release application
+nname: Release application
 
 on:
   push:
@@ -20,6 +20,8 @@ env:
   TODO_APP_DOCKERFILE_PATH: project-in-cloud/todo-app/
   TODO_GENERATOR_IMAGE_NAME: todo-generator
   TODO_GENERATOR_DOCKERFILE_PATH: project-in-cloud/todo-generator/
+  DB_BACKUP_IMAGE_NAME: db-backup-tool
+  DB_BACKUP_DOCKERFILE_PATH: project-in-cloud/db-backup-image/
 
 jobs:
   build-publish-deploy:
@@ -78,6 +80,13 @@ jobs:
           docker push $TODO_GENERATOR_FULL_IMAGE_TAG
           echo "TODO_GENERATOR_FULL_IMAGE_TAG=$TODO_GENERATOR_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
+      - name: Build and Publish DB Backup Docker Image
+        run: |
+          DB_BACKUP_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.DB_BACKUP_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $DB_BACKUP_FULL_IMAGE_TAG ${{ env.DB_BACKUP_DOCKERFILE_PATH }}
+          docker push $DB_BACKUP_FULL_IMAGE_TAG
+          echo "DB_BACKUP_FULL_IMAGE_TAG=$DB_BACKUP_FULL_IMAGE_TAG" >> $GITHUB_ENV
+
       - name: Get GKE credentials
         uses: 'google-github-actions/get-gke-credentials@v2'
         with:
@@ -92,12 +101,7 @@ jobs:
       - name: Inject GCS Service Account Key
         working-directory: project-in-cloud/
         run: |
-          # Base64 encode the service account JSON secret, preventing line wrapping
           ENCODED_KEY=$(echo '${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}' | base64 -w 0)
-          
-          # Replace the placeholder in the backup secret YAML file
-          # The path is relative to the 'working-directory' (project-in-cloud/)
-          # Ensure 'backupsecret.yaml' is in 'todo-backend/manifests/'
           sed -i "s|GCS_SA_KEY_PLACEHOLDER|$ENCODED_KEY|" todo-backend/manifests/backupsecret.yaml
         env:
           GCS_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}
@@ -108,16 +112,14 @@ jobs:
       - name: Update Kustomization image tags and Deploy
         working-directory: project-in-cloud/
         run: |
-          # The correct way to set the namespace dynamically
           kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
           kustomize edit set image ${{ env.TODO_BACKEND_IMAGE_NAME }}=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
+          kustomize edit set image ${{ env.DB_BACKUP_IMAGE_NAME }}=${{ env.DB_BACKUP_FULL_IMAGE_TAG }} # New image tag update
 
-          # The debug step to show the output
           kustomize build .
           
-          # The deployment command
           kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
