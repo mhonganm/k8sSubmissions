@@ -3,14 +3,14 @@ kind: CronJob
 metadata:
   name: todo-db-backup
 spec:
-  schedule: "0 0 * * *" # Runs daily at midnight UTC
+  schedule: "0 0 * * *" 
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: db-backup-container
-            image: ${{ env.DB_BACKUP_FULL_IMAGE_TAG }} # This will be replaced by the GitHub Action
+            image: db-backup-tool 
             env:
             - name: PGPASSWORD
               valueFrom:
@@ -29,7 +29,7 @@ spec:
             - name: PGPORT
               value: "5432"
             - name: GCS_BUCKET_NAME
-              value: "dockerdb-backup" # <--- REPLACE WITH YOUR ACTUAL GCS BUCKET NAME HERE
+              value: "dockerdb-backup"
             command: ["/bin/bash", "-c"]
             args:
               - |
