@@ -91,3 +91,5 @@ Choosing between a managed database service (DBaaS) like Google Cloud SQL and a 
 
 * **For most applications prioritizing rapid development, reliability, and reduced operational burden, Google Cloud SQL (DBaaS) is often the preferred choice.** The higher direct cost is typically offset by significant savings in engineering time and reduced risk.
 * **Self-managed PostgreSQL on GKE is suitable for organizations with specific niche requirements, deep database expertise, or extreme cost optimization goals for large-scale deployments where the operational overhead is justified.** It offers maximum control but demands significant investment in setup, maintenance, and expertise.
+* <img width="1207" height="699" alt="image" src="https://github.com/user-attachments/assets/36fe966e-4975-458e-acf5-be88f4929132" />
+
