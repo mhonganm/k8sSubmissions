@@ -48,6 +48,13 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "256Mi"
+          limits:
+            cpu: "300m"
+            memory: "1Gi"
   volumeClaimTemplates:
   - metadata:
       name: todo-postgres-data

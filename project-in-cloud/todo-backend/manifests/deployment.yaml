@@ -44,3 +44,10 @@ spec:
             configMapKeyRef:
               name: project-config
               key: TODO_MAX_LENGTH
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+          limits:
+            cpu: "200m"
+            memory: "300Mi"

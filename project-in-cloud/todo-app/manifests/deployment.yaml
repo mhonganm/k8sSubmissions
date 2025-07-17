@@ -32,6 +32,13 @@ spec:
         envFrom:
         - configMapRef:
             name: project-config
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+          limits:
+            cpu: "200m"
+            memory: "300Mi"
         volumeMounts:
         - name: cached-images-data
           mountPath: /mnt/image-cache

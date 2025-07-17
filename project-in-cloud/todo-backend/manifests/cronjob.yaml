@@ -3,14 +3,14 @@ kind: CronJob
 metadata:
   name: todo-db-backup
 spec:
-  schedule: "0 0 * * *" # Runs daily at midnight UTC
+  schedule: "0 0 * * *"
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: db-backup-container
-            image: db-backup-tool # Kustomize will replace this with the full image tag
+            image: db-backup-tool
             env:
             - name: PGPASSWORD
               valueFrom:
@@ -29,31 +29,28 @@ spec:
             - name: PGPORT
               value: "5432"
             - name: GCS_BUCKET_NAME
-              value: "dockerdb-backup" # <--- REPLACE WITH YOUR ACTUAL GCS BUCKET NAME HERE
+              value: "dockerdb-backup"
             command: ["/bin/bash", "-c"]
             args:
               - |
-                set -e # <--- THIS IS THE NEW LINE: Exit immediately if a command exits with a non-zero status.
-                
-                # Authenticate gcloud with the service account key
+                set -e
                 gcloud auth activate-service-account --key-file=/etc/gcloud/key.json
-                
-                # Generate a timestamped backup filename
                 BACKUP_FILE="todo_backup_$(date +%Y%m%d_%H%M%S).sql"
-                
-                # Perform the pg_dump
                 pg_dump -Fc -v -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE > /tmp/$BACKUP_FILE
-                
-                echo "PostgreSQL dump completed: /tmp/$BACKUP_FILE" # Added log message for clarity
-                
-                # Upload the backup to GCS
+                echo "PostgreSQL dump completed: /tmp/$BACKUP_FILE"
                 gsutil cp /tmp/$BACKUP_FILE gs://${GCS_BUCKET_NAME}/$BACKUP_FILE
-                
                 echo "Backup completed and uploaded to gs://${GCS_BUCKET_NAME}/$BACKUP_FILE"
             volumeMounts:
             - name: gcs-key-volume
               mountPath: /etc/gcloud
               readOnly: true
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "200Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
           volumes:
           - name: gcs-key-volume
             secret:
