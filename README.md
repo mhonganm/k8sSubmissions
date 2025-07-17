@@ -13,6 +13,7 @@
 - [3.7.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.7)
 - [3.8.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.8)
 - [3.9.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.9)
+- [3.10.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.10)
 
 ### Chapter 3
 
