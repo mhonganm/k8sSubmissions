@@ -2,6 +2,10 @@
 
 ## Exercises
 
+### Chapter 5
+
+- [4.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.1)
+
 ### Chapter 4
 
 - [3.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/3.1)
