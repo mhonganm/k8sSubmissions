@@ -1,12 +1,8 @@
-# namespace-exercises.yaml (Ensure this namespace exists in GKE)
 apiVersion: v1
 kind: Namespace
 metadata:
   name: exercises
 ---
-# postgres-secret.yaml (PostgreSQL Credentials Secret)
-# Ensure you have applied this secret with your base64 encoded password
-# kubectl apply -f postgres-secret.yaml -n exercises
 apiVersion: v1
 kind: Secret
 metadata:
@@ -14,10 +10,9 @@ metadata:
   namespace: exercises
 type: Opaque
 data:
-  POSTGRES_USER: cG9zdGdyZXM= # Base64 encoded "postgres"
-  POSTGRES_PASSWORD: Q2VwdGVuOTEh # REPLACE WITH YOUR BASE64 ENCODED PASSWORD
+  POSTGRES_USER: cG9zdGdyZXM=
+  POSTGRES_PASSWORD: Q2VwdGVuOTEh
 ---
-# postgres-statefulset-service.yaml (PostgreSQL StatefulSet and Service)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -36,7 +31,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: postgres:16.2-alpine # Public image from Docker Hub
+        image: postgres:16.2-alpine
         ports:
         - containerPort: 5432
           name: postgres-port
@@ -56,7 +51,7 @@ spec:
         volumeMounts:
         - name: postgres-data
           mountPath: /var/lib/postgresql/data
-          subPath: postgres # ADDED: subPath to avoid initdb: directory exists but is not empty
+          subPath: postgres
         livenessProbe:
           exec:
             command: ["pg_isready", "-U", "postgres"]
@@ -77,7 +72,7 @@ spec:
       resources:
         requests:
           storage: 1Gi
-      storageClassName: standard # Changed to 'standard' for GKE (Google's default StorageClass)
+      storageClassName: standard
 ---
 apiVersion: v1
 kind: Service
@@ -93,9 +88,8 @@ spec:
   - protocol: TCP
     port: 5432
     targetPort: postgres-port
-  type: ClusterIP # Keep as ClusterIP, internal service
+  type: ClusterIP
 ---
-# ping-pong-deployment.yaml (Ping-pong Application Deployment)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -115,8 +109,8 @@ spec:
     spec:
       containers:
       - name: ping-pong-container
-        image: honganmaki/ping-pong:latest # UPDATED: Image from Docker Hub
-        imagePullPolicy: Always # Always pull image from public registry
+        image: honganmaki/ping-pong:v7.0
+        imagePullPolicy: Always
         ports:
         - containerPort: 3001
         env:
@@ -138,8 +132,14 @@ spec:
             secretKeyRef:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-h", "postgres-db-service", "-p", "5432", "-U", "pingponguser", "-d", "pingpongdb"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
 ---
-# ping-pong-service.yaml (Ping-pong Application Service)
 apiVersion: v1
 kind: Service
 metadata:
@@ -152,6 +152,6 @@ spec:
     app: ping-pong
   ports:
   - protocol: TCP
-    port: 80 # External port for LoadBalancer
-    targetPort: 3001 # Container's listening port
-  type: LoadBalancer # UPDATED: Changed to LoadBalancer to expose externally
+    port: 80
+    targetPort: 3001
+  type: LoadBalancer

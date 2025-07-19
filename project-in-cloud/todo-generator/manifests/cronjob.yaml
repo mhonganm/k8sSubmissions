@@ -3,7 +3,6 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: random-todo-generator-job
-  namespace: project
 spec:
   schedule: "0 * * * *"
   jobTemplate:
@@ -19,6 +18,13 @@ spec:
               value: "http://todo-backend-service:80/api/todos"
             - name: RANDOM_FACT_API_URL
               value: "http://numbersapi.com/random/trivia"
+            resources:
+              requests:
+                cpu: "10m"
+                memory: "32Mi"
+              limits:
+                cpu: "50m"
+                memory: "64Mi"
           restartPolicy: OnFailure
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
