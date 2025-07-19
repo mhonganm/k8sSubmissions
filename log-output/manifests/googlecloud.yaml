@@ -1,3 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: exercises
+data:
+  information.txt: |
+    message from information.txt.
+    The application name is Log output.
+    It demonstrates ConfigMap file mounting.
+  MESSAGE: "Hello There-- ah general kenobi"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,3 +73,47 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: log-output-ingress
+  namespace: exercises
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: log-output.k3d.local
+    http:
+      paths:
+      - path: /status
+        pathType: Prefix
+        backend:
+          service:
+            name: log-output-service
+            port:
+              number: 80
+      - path: /pingpong
+        pathType: Prefix
+        backend:
+          service:
+            name: ping-pong-service
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: exercises
+  name: log-output-service
+  labels:
+    app: log-output
+spec:
+  selector:
+    app: log-output
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
