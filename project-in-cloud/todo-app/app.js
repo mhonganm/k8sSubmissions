@@ -282,8 +282,8 @@ app.get('/', (req, res) => {
         "            }" +
         "        }" +
 
-
         "        async function fetchAndRenderTodos() {" +
+        "            console.log('[TODO-APP-CLIENT] fetchAndRenderTodos() called.');" + // ADD THIS LINE
         "            try {" +
         "                const response = await fetch(TODO_BACKEND_JS_URL);" +
         "                if (!response.ok) {" +
@@ -374,6 +374,7 @@ app.get('/', (req, res) => {
         "        }" +
 
         "        document.addEventListener('DOMContentLoaded', () => {" +
+        "            console.log('[TODO-APP-CLIENT] DOMContentLoaded event fired. Initiating fetches...');" + // ADD THIS LINE
         "            fetchMetadata();" +
         "            fetchAndRenderTodos();" +
 
