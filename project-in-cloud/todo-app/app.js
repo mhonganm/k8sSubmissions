@@ -13,7 +13,7 @@ const CURRENT_IMAGE_METADATA_PATH = path.join(__dirname, 'image_metadata.json');
 
 let currentImageMetadata = null;
 
-const TODO_BACKEND_SERVICE_URL = process.env.TODO_BACKEND_URL_PATH;
+onst BACKEND_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:2345';
 
 const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'https://placehold.co/';
 const IMAGE_TEXT_PREFIX = process.env.IMAGE_TEXT_PREFIX || 'Image';
@@ -197,7 +197,7 @@ app.get('/', (req, res) => {
 
         "    <script>" +
         "        // Node.js will inject the URL here" +
-        "        const TODO_BACKEND_JS_URL = '" + TODO_BACKEND_SERVICE_URL + "';" +
+        "        const TODO_BACKEND_JS_URL = '" + BACKEND_BASE_URL + "/api/todos';" +
         "        const JS_TODO_MAX_LENGTH = " + TODO_MAX_LENGTH + ";" + // Pass max length to client-side JS
 
         "        // Custom message box functions (client-side implementation)" +
