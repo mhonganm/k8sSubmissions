@@ -5,57 +5,19 @@ metadata:
   labels:
     app: todo-app
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: todo-app
-  strategy:
-    type: Recreate
+  # ...
   template:
-    metadata:
-      labels:
-        app: todo-app
+    # ...
     spec:
-      volumes:
-      - name: cached-images-data
-        persistentVolumeClaim:
-          claimName: cached-images-pvc
-      - name: project-config-volume
-        configMap:
-          name: project-config
       containers:
       - name: todo-app-container
-        image: todo-app:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 3000
-        envFrom:
-        - configMapRef:
-            name: project-config
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "200Mi"
-          limits:
-            cpu: "200m"
-            memory: "300Mi"
-        volumeMounts:
-        - name: cached-images-data
-          mountPath: /mnt/image-cache
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+        # ...
         readinessProbe:
           httpGet:
             path: /
             port: 80
             host: todo-backend-service
-          initialDelaySeconds: 15
+          initialDelaySeconds: 30 # Increased from 15
           periodSeconds: 5
-          timeoutSeconds: 3
+          timeoutSeconds: 5   # Increased from 3
           failureThreshold: 3
