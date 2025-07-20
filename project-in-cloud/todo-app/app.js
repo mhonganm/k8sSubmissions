@@ -126,14 +126,13 @@ function showMessage(message, type = 'info') {
 
 
 app.get('/', (req, res) => {
-    // --- START HTML PART (from line 107 in original, careful with quotes!) ---
     res.send(
         "<!DOCTYPE html>" +
         "<html lang=\"en\">" +
         "<head>" +
         "    <meta charset=\"UTF-8\">" +
         "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" +
-        "    <title>" + APP_TITLE + "</title>" + // Use env var for title
+        "    <title>" + APP_TITLE + "</title>" +
         "    <style>" +
         "        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }" +
         "        img { max-width: 90%; height: auto; border: 2px solid #333; margin-bottom: 20px; }" +
@@ -142,16 +141,16 @@ app.get('/', (req, res) => {
         "        .status { margin-top: 10px; font-size: 0.9em; color: #555; }" +
         "        .todo-section { margin-top: 40px; text-align: center; }" +
         "        .todo-input { width: 300px; padding: 8px; margin-bottom: 10px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }" +
-        "        .todo-list { list-style: none; padding: 0; text-align: left; width: 350px; }" + // Removed list-style: inside and adjusted width
+        "        .todo-list { list-style: none; padding: 0; text-align: left; width: 350px; }" + // Adjusted width and list-style
         "        .todo-list li { " +
         "            background-color: #fff; border: 1px solid #eee; margin-bottom: 5px; padding: 10px; border-radius: 4px; " +
         "            display: flex; align-items: center; justify-content: space-between; " + // Added flexbox for layout
         "        }" +
-        "        .todo-list li.todo-done .todo-text { text-decoration: line-through; color: #888; }" + // NEW: Style for done todos
-        "        .todo-item-content { display: flex; align-items: center; flex-grow: 1; }" + // NEW: Container for checkbox and text
-        "        .todo-checkbox { margin-right: 10px; transform: scale(1.2); width: 20px; height: 20px; background-color: #eee; border: 1px solid #ccc; vertical-align: middle; cursor: pointer; }" +
-        "        .todo-text { flex-grow: 1; word-break: break-word; }" + // NEW: Text span for strikethrough
-        "        .delete-btn { " + // NEW: Style for delete button
+        "        .todo-list li.todo-done .todo-text { text-decoration: line-through; color: #888; }" + // Style for done todos
+        "        .todo-item-content { display: flex; align-items: center; flex-grow: 1; }" + // Container for checkbox and text
+        "        .todo-checkbox { margin-right: 10px; transform: scale(1.2); width: 20px; height: 20px; background-color: #eee; border: 1px solid #ccc; vertical-align: middle; cursor: pointer; }" + // Style for checkbox + FIXES
+        "        .todo-text { flex-grow: 1; word-break: break-word; }" + // Text span for strikethrough
+        "        .delete-btn { " + // Style for delete button
         "            background-color: #dc3545; color: white; border: none; border-radius: 4px; " +
         "            padding: 5px 10px; margin-left: 10px; cursor: pointer; font-size: 0.9em;" +
         "        }" +
@@ -196,16 +195,15 @@ app.get('/', (req, res) => {
         "    </div>" +
 
         "    <script>" +
-        "        // Node.js will inject the URL here" +
-        "        const TODO_BACKEND_JS_URL = '" + BACKEND_BASE_URL + "/api/todos';" +
+        "        // Client-side JavaScript will use this URL to talk to the backend via proxy" +
+        "        const TODO_BACKEND_JS_URL = '/api/todos';" + // Corrected to use proxy path
         "        const JS_TODO_MAX_LENGTH = " + TODO_MAX_LENGTH + ";" + // Pass max length to client-side JS
 
-        "        // Custom message box functions (client-side implementation)" +
         "        function showMessage(message, type = 'info') {" +
         "            const messageBox = document.getElementById('messageBox');" +
         "            const messageText = document.getElementById('messageText');" +
         "            messageText.textContent = message;" +
-        "            messageBox.className = 'message-box ' + type; // Using concatenation for VS Code" +
+        "            messageBox.className = 'message-box ' + type;" +
         "            messageBox.style.display = 'block';" +
         "            setTimeout(() => {" +
         "                messageBox.style.display = 'none';" +
@@ -239,7 +237,6 @@ app.get('/', (req, res) => {
         "            setTimeout(fetchMetadata, 1000);" +
         "        }" +
 
-        "        // NEW: Function to toggle todo's 'done' status" +
         "        async function toggleTodoDone(todoId, currentDoneStatus) {" +
         "            try {" +
         "                const response = await fetch(TODO_BACKEND_JS_URL + '/' + todoId, {" +
@@ -247,7 +244,7 @@ app.get('/', (req, res) => {
         "                    headers: {" +
         "                        'Content-Type': 'application/json'" +
         "                    }," +
-        "                    body: JSON.stringify({ done: !currentDoneStatus })" + // Toggle the status
+        "                    body: JSON.stringify({ done: !currentDoneStatus })" +
         "                });" +
 
         "                if (!response.ok) {" +
@@ -256,14 +253,13 @@ app.get('/', (req, res) => {
         "                }" +
 
         "                showMessage('Todo status updated!', 'info');" +
-        "                await fetchAndRenderTodos(); // Re-render to reflect changes" +
+        "                await fetchAndRenderTodos();" +
         "            } catch (error) {" +
         "                console.error('Error updating todo status:', error);" +
         "                showMessage('Error updating todo status. Please check console.', 'error');" +
         "            }" +
         "        }" +
 
-        "        // NEW: Function to delete a todo" +
         "        async function deleteTodo(todoId) {" +
         "            if (!confirm('Are you sure you want to delete this todo?')) {" +
         "                return;" +
@@ -279,7 +275,7 @@ app.get('/', (req, res) => {
         "                }" +
 
         "                showMessage('Todo deleted successfully!', 'info');" +
-        "                await fetchAndRenderTodos(); // Re-render to reflect changes" +
+        "                await fetchAndRenderTodos();" +
         "            } catch (error) {" +
         "                console.error('Error deleting todo:', error);" +
         "                showMessage('Error deleting todo. Please check console.', 'error');" +
@@ -345,11 +341,11 @@ app.get('/', (req, res) => {
         "            const todoText = todoInput.value.trim();" +
 
         "            if (todoText.length === 0) {" +
-        "                showMessage('Todo cannot be empty!', 'warning');" + // Use custom message
+        "                showMessage('Todo cannot be empty!', 'warning');" +
         "                return;" +
         "            }" +
-        "            if (todoText.length > JS_TODO_MAX_LENGTH) {" + // Use client-side JS variable
-        "                showMessage('Todo is too long! Max ' + JS_TODO_MAX_LENGTH + ' characters.', 'warning');" + // Use custom message
+        "            if (todoText.length > JS_TODO_MAX_LENGTH) {" +
+        "                showMessage('Todo is too long! Max ' + JS_TODO_MAX_LENGTH + ' characters.', 'warning');" +
         "                return;" +
         "            }" +
 
@@ -370,10 +366,10 @@ app.get('/', (req, res) => {
         "                todoInput.value = '';" +
         "                await fetchAndRenderTodos();" +
         "                console.log('Todo added successfully!');" +
-        "                showMessage('Todo added successfully!', 'info');" + // Success message
+        "                showMessage('Todo added successfully!', 'info');" +
         "            } catch (error) {" +
         "                console.error('Error adding todo to backend:', error);" +
-        "                showMessage('Error adding todo to backend. Please check console.', 'error');" + // Error message
+        "                showMessage('Error adding todo to backend. Please check console.', 'error');" +
         "            }" +
         "        }" +
 
@@ -396,7 +392,6 @@ app.get('/', (req, res) => {
         "</body>" +
         "</html>"
     );
-    // --- END HTML PART ---
 });
 
 app.get('/metadata', (req, res) => {
