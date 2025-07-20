@@ -25,7 +25,7 @@ spec:
           name: project-config
       containers:
       - name: todo-app-container
-        image: todo-app:latest
+        image: europe-north1-docker.pkg.dev/open-uni-465421/honganmakirepo/todo-app:29d78dacd2e0bff966cca9b4864abe3b1c3a961e
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
@@ -38,17 +38,21 @@ spec:
             memory: "200Mi"
           limits:
             cpu: "200m"
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-        readinessProbe:
+            memory: "300Mi"
+        volumeMounts:
+        - name: cached-images-data
+          mountPath: /mnt/image-cache
+        livenessProbe:
           httpGet:
             path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
             port: 80
             host: 10.32.7.56
           initialDelaySeconds: 30
