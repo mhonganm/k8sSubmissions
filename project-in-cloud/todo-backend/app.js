@@ -33,6 +33,23 @@ async function initializeDatabase() {
       );
     `);
     console.log('[TODO-BACKEND] Database table "todos" ensured.');
+
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='todos' AND column_name='done') THEN
+          ALTER TABLE todos ADD COLUMN done BOOLEAN DEFAULT FALSE;
+          -- You might want to update existing rows to set 'done' to false,
+          -- or leave them as default if that's acceptable.
+          -- For new installations, DEFAULT FALSE ensures consistency.
+          -- If you have existing data and want 'done' to be true for some,
+          -- you'd need a separate migration script or manual update.
+          UPDATE todos SET done = FALSE WHERE done IS NULL;
+        END IF;
+      END
+      $$;
+    `);
+    console.log('[TODO-BACKEND] Database column "done" ensured in "todos" table.');
     client.release();
   } catch (err) {
     console.error('[TODO-BACKEND] Error initializing database:', err.message);
@@ -63,9 +80,11 @@ app.use((req, res, next) => {
             if (req.method === 'POST') {
                 logEntry.body = req.body.text ? req.body.text.substring(0, 200) + (req.body.text.length > 200 ? '...' : '') : ''; // Log first 200 chars of todo text
             }
+            if (req.method === 'PUT') {
+                logEntry.body = JSON.stringify(req.body).substring(0, 200) + (JSON.stringify(req.body).length > 200 ? '...' : '');
+            }
             console.log(`[TODO-BACKEND] Request Log: ${JSON.stringify(logEntry)}`);
         } else {
-
             console.log(`[TODO-BACKEND] Access Log: ${JSON.stringify({
                 timestamp: logEntry.timestamp,
                 method: logEntry.method,
@@ -95,7 +114,7 @@ app.get('/api/todos', async (req, res) => {
     console.log('[TODO-BACKEND] GET /api/todos request received');
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT id, text FROM todos ORDER BY id ASC;');
+        const result = await client.query('SELECT id, text, done FROM todos ORDER BY id ASC;');
         client.release();
         res.json(result.rows);
     } catch (err) {
@@ -108,28 +127,91 @@ app.post('/api/todos', async (req, res) => {
     const { text } = req.body;
     if (!text || text.trim() === '') {
         console.log('[TODO-BACKEND] POST /api/todos - Error: Text cannot be empty');
-
         console.error(`[TODO-BACKEND] Validation Error: Empty todo text from IP: ${req.ip}`);
         return res.status(400).json({ error: 'Todo text cannot be empty' });
     }
     if (text.length > TODO_MAX_LENGTH) {
         console.log(`[TODO-BACKEND] POST /api/todos - Error: Text too long (max ${TODO_MAX_LENGTH} chars)`);
-
         console.error(`[TODO-BACKEND] Validation Error: Todo text too long from IP: ${req.ip}, Length: ${text.length}, Max: ${TODO_MAX_LENGTH}`);
         return res.status(400).json({ error: `Todo text too long, max ${TODO_MAX_LENGTH} characters` });
     }
 
     try {
         const client = await pool.connect();
-        const result = await client.query('INSERT INTO todos (text) VALUES ($1) RETURNING id, text;', [text.trim()]);
+        const result = await client.query('INSERT INTO todos (text) VALUES ($1) RETURNING id, text, done;', [text.trim()]);
         client.release();
         const newTodo = result.rows[0];
         console.log('[TODO-BACKEND] POST /api/todos - Added:', newTodo);
-        console.log(`[TODO-BACKEND] Todo Added Successfully: id=${newTodo.id}, text="${newTodo.text}"`); // Specific success log
+        console.log(`[TODO-BACKEND] Todo Added Successfully: id=${newTodo.id}, text="${newTodo.text}"`);
         res.status(201).json(newTodo);
     } catch (err) {
-        console.error('[TODO-BACKEND] Error adding todo to database:', err.message); // More specific error log
+        console.error('[TODO-BACKEND] Error adding todo to database:', err.message);
         res.status(500).json({ error: 'Error adding todo.' });
+    }
+});
+
+
+app.put('/api/todos/:id', async (req, res) => {
+    const { id } = req.params;
+    const { text, done } = req.body; 
+
+    if (text === undefined && done === undefined) {
+        return res.status(400).json({ error: 'At least "text" or "done" field must be provided for update.' });
+    }
+
+
+    const updateClauses = [];
+    const queryParams = [];
+    let paramIndex = 1;
+
+    if (text !== undefined) {
+        if (text === null || text.trim() === '') {
+            return res.status(400).json({ error: 'Todo text cannot be empty.' });
+        }
+        if (text.length > TODO_MAX_LENGTH) {
+            return res.status(400).json({ error: `Todo text too long, max ${TODO_MAX_LENGTH} characters.` });
+        }
+        updateClauses.push(`text = $${paramIndex++}`);
+        queryParams.push(text.trim());
+    }
+
+    if (done !== undefined) {
+        if (typeof done !== 'boolean') {
+            return res.status(400).json({ error: '"done" field must be a boolean.' });
+        }
+        updateClauses.push(`done = $${paramIndex++}`);
+        queryParams.push(done);
+    }
+
+    if (updateClauses.length === 0) {
+        return res.status(400).json({ error: 'No valid fields provided for update.' });
+    }
+
+  
+    queryParams.push(id);
+
+    try {
+        const client = await pool.connect();
+        const updateQuery = `UPDATE todos SET ${updateClauses.join(', ')} WHERE id = $${paramIndex} RETURNING id, text, done;`;
+        console.log(`[TODO-BACKEND] PUT /api/todos/${id} - Executing query: ${updateQuery}`);
+        console.log(`[TODO-BACKEND] PUT /api/todos/${id} - Query params: ${JSON.stringify(queryParams)}`);
+
+        const result = await client.query(updateQuery, queryParams);
+        client.release();
+
+        if (result.rowCount > 0) {
+            const updatedTodo = result.rows[0];
+            console.log(`[TODO-BACKEND] PUT /api/todos/${id} - Updated successfully:`, updatedTodo);
+            console.log(`[TODO-BACKEND] Todo Updated Successfully: id=${updatedTodo.id}`);
+            res.json(updatedTodo);
+        } else {
+            console.log(`[TODO-BACKEND] PUT /api/todos/${id} - Error: Todo not found`);
+            console.error(`[TODO-BACKEND] Update Error: Todo id=${id} not found.`);
+            res.status(404).json({ error: 'Todo not found' });
+        }
+    } catch (err) {
+        console.error(`[TODO-BACKEND] Error updating todo id=${id} in database:`, err.message);
+        res.status(500).json({ error: 'Error updating todo.' });
     }
 });
 
@@ -143,15 +225,15 @@ app.delete('/api/todos/:id', async (req, res) => {
 
         if (result.rowCount > 0) {
             console.log(`[TODO-BACKEND] DELETE /api/todos/${id} - Deleted successfully`);
-            console.log(`[TODO-BACKEND] Todo Deleted Successfully: id=${id}`); // Specific success log
+            console.log(`[TODO-BACKEND] Todo Deleted Successfully: id=${id}`);
             res.status(204).send();
         } else {
             console.log(`[TODO-BACKEND] DELETE /api/todos/${id} - Error: Todo not found`);
-            console.error(`[TODO-BACKEND] Deletion Error: Todo id=${id} not found.`); // Specific error log
+            console.error(`[TODO-BACKEND] Deletion Error: Todo id=${id} not found.`);
             res.status(404).json({ error: 'Todo not found' });
         }
     } catch (err) {
-        console.error('[TODO-BACKEND] Error deleting todo from database:', err.message); // More specific error log
+        console.error('[TODO-BACKEND] Error deleting todo from database:', err.message);
         res.status(500).json({ error: 'Error deleting todo.' });
     }
 });
