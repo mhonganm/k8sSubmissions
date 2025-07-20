@@ -130,5 +130,14 @@ jobs:
           echo "Waiting for todo-app deployment to roll out..."
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
+          # --- START OF NEW LINES ADDED HERE ---
+          # Explicitly set the image for the todo-app deployment to force an update
+          echo "Ensuring todo-app deployment uses the latest image tag..."
+          kubectl set image deployment/todo-app-deployment todo-app-container=${{ env.TODO_APP_FULL_IMAGE_TAG }} -n ${{ env.K8S_NAMESPACE }}
+
+          echo "Waiting for todo-app deployment to roll out after explicit image set..."
+          kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+          # --- END OF NEW LINES ADDED HERE ---
+
       - name: Get service information to confirm external access
         run: kubectl get services -n ${{ env.K8S_NAMESPACE }} -o wide
