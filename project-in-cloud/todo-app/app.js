@@ -8,21 +8,6 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const app = express();
 const PORT = process.env.TODO_APP_PORT || 3000;
 
-const CURRENT_IMAGE_PATH = path.join(__dirname, 'image.jpg');
-const CURRENT_IMAGE_METADATA_PATH = path.join(__dirname, 'image_metadata.json');
-
-let currentImageMetadata = null;
-
-const TODO_BACKEND_SERVICE_URL = process.env.TODO_BACKEND_URL_PATH;
-
-const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'https://placehold.co/';
-const IMAGE_TEXT_PREFIX = process.env.IMAGE_TEXT_PREFIX || 'Image';
-const IMAGE_FETCH_INTERVAL_MS = parseInt(process.env.IMAGE_FETCH_INTERVAL_MINUTES || '5', 10) * 60 * 1000;
-const IMAGE_FETCH_TIMEOUT_MS = parseInt(process.env.IMAGE_FETCH_TIMEOUT_MS || '15000', 10);
-
-const TODO_MAX_LENGTH = parseInt(process.env.TODO_MAX_LENGTH || '140', 10);
-const APP_TITLE = process.env.APP_TITLE || 'Todo & Image App';
-
 app.use(
     '/api',
     createProxyMiddleware({
@@ -42,6 +27,21 @@ app.use(
         }
     })
 );
+
+const CURRENT_IMAGE_PATH = path.join(__dirname, 'image.jpg');
+const CURRENT_IMAGE_METADATA_PATH = path.join(__dirname, 'image_metadata.json');
+
+let currentImageMetadata = null;
+
+const TODO_BACKEND_SERVICE_URL = process.env.TODO_BACKEND_URL_PATH;
+
+const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'https://placehold.co/';
+const IMAGE_TEXT_PREFIX = process.env.IMAGE_TEXT_PREFIX || 'Image';
+const IMAGE_FETCH_INTERVAL_MS = parseInt(process.env.IMAGE_FETCH_INTERVAL_MINUTES || '5', 10) * 60 * 1000;
+const IMAGE_FETCH_TIMEOUT_MS = parseInt(process.env.IMAGE_FETCH_TIMEOUT_MS || '15000', 10);
+
+const TODO_MAX_LENGTH = parseInt(process.env.TODO_MAX_LENGTH || '140', 10);
+const APP_TITLE = process.env.APP_TITLE || 'Todo & Image App';
 
 
 async function loadMetadata() {
@@ -149,7 +149,7 @@ app.get('/', (req, res) => {
         "        }" +
         "        .todo-list li.todo-done .todo-text { text-decoration: line-through; color: #888; }" + // NEW: Style for done todos
         "        .todo-item-content { display: flex; align-items: center; flex-grow: 1; }" + // NEW: Container for checkbox and text
-        "        .todo-checkbox { margin-right: 10px; transform: scale(1.2); }" + // NEW: Style for checkbox
+        "        .todo-checkbox { margin-right: 10px; transform: scale(1.2); width: 20px; height: 20px; background-color: #eee; border: 1px solid #ccc; vertical-align: middle; cursor: pointer; }" + // NEW: Style for checkbox + FIXES
         "        .todo-text { flex-grow: 1; word-break: break-word; }" + // NEW: Text span for strikethrough
         "        .delete-btn { " + // NEW: Style for delete button
         "            background-color: #dc3545; color: white; border: none; border-radius: 4px; " +
