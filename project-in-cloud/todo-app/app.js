@@ -13,7 +13,7 @@ const CURRENT_IMAGE_METADATA_PATH = path.join(__dirname, 'image_metadata.json');
 
 let currentImageMetadata = null;
 
-onst BACKEND_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:2345';
+const BACKEND_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:2345';
 
 const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'https://placehold.co/';
 const IMAGE_TEXT_PREFIX = process.env.IMAGE_TEXT_PREFIX || 'Image';
