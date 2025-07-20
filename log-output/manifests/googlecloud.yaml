@@ -66,7 +66,8 @@ spec:
           readOnly: true
         readinessProbe:
           httpGet:
-            host: pingpong-service
+            # --- FIX: Use ClusterIP for direct access to ping-pong-service ---
+            host: 10.32.11.7 # Replaced 'pingpong-service' with its ClusterIP
             port: 80
             path: /
           initialDelaySeconds: 15
