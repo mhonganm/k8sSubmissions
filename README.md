@@ -6,6 +6,7 @@
 
 - [4.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.1)
 - [4.2.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.2)
+- [4.3.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.3)
 
 ### Chapter 4
 
@@ -101,3 +102,5 @@ Choosing between a managed database service (DBaaS) like Google Cloud SQL and a 
   
 * <img width="1207" height="699" alt="image" src="https://github.com/user-attachments/assets/36fe966e-4975-458e-acf5-be88f4929132" />
 
+image for 4.3  requirement
+<img width="1205" height="367" alt="image" src="https://github.com/user-attachments/assets/78e5e398-ebe2-4c0b-91cc-9bb1ec1be85e" />
