@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const fs = require('fs').promises;
 const path = require('path');
 const https = require('https');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = process.env.TODO_APP_PORT || 3000;
@@ -21,6 +22,26 @@ const IMAGE_FETCH_TIMEOUT_MS = parseInt(process.env.IMAGE_FETCH_TIMEOUT_MS || '1
 
 const TODO_MAX_LENGTH = parseInt(process.env.TODO_MAX_LENGTH || '140', 10);
 const APP_TITLE = process.env.APP_TITLE || 'Todo & Image App';
+
+app.use(
+    '/api',
+    createProxyMiddleware({
+        target: process.env.REACT_APP_BACKEND_URL || 'http://localhost:2345',
+        changeOrigin: true,
+        pathRewrite: {
+            '^/api': '',
+        },
+        onProxyReq: (proxyReq, req, res) => {
+            console.log(`[TODO-APP] Proxying request from ${req.originalUrl} to ${proxyReq.path}`);
+        },
+        onProxyRes: (proxyRes, req, res) => {
+            console.log(`[TODO-APP] Proxy response for ${req.originalUrl} status: ${proxyRes.statusCode}`);
+        },
+        onError: (err, req, res) => {
+            console.error(`[TODO-APP] Proxy error for ${req.originalUrl}:`, err);
+        }
+    })
+);
 
 
 async function loadMetadata() {
