@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+´apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: todo-app-deployment
@@ -38,23 +38,19 @@ spec:
             memory: "200Mi"
           limits:
             cpu: "200m"
-            memory: "300Mi"
-        volumeMounts:
-        - name: cached-images-data
-          mountPath: /mnt/image-cache
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /
             port: 80
-            host: todo-backend-service
+            host: 10.32.7.56
           initialDelaySeconds: 30
           periodSeconds: 5
           timeoutSeconds: 5
