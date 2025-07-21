@@ -195,6 +195,7 @@ app.get('/', (req, res) => {
         "    </div>" +
 
         "    <script>" +
+        "            console.log('[TODO-APP-CLIENT] Script block started!');" +        
         "        // Client-side JavaScript will use this URL to talk to the backend via proxy" +
         "        const TODO_BACKEND_JS_URL = '/api/todos';" + // Corrected to use proxy path
         "        const JS_TODO_MAX_LENGTH = " + TODO_MAX_LENGTH + ";" + // Pass max length to client-side JS
