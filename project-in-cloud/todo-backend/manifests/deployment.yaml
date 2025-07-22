@@ -45,7 +45,7 @@ spec:
               name: project-config
               key: TODO_MAX_LENGTH
         - name: NATS_SERVER_URL # ADDED: NATS Server URL for the backend
-          value: "nats://nats:4222" # Assumes NATS service named 'nats' on port 4222
+          value: "nats://my-nats.default:4222" # Assumes NATS service named 'nats' on port 4222
         resources:
           requests:
             cpu: "100m"

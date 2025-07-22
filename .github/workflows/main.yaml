@@ -22,6 +22,9 @@ env:
   TODO_GENERATOR_DOCKERFILE_PATH: project-in-cloud/todo-generator/
   DB_BACKUP_IMAGE_NAME: db-backup-tool
   DB_BACKUP_DOCKERFILE_PATH: project-in-cloud/db-backup-image/
+  # ADDED: Broadcaster image details
+  BROADCASTER_IMAGE_NAME: broadcaster
+  BROADCASTER_DOCKERFILE_PATH: project-in-cloud/broadcaster/ # Ensure this path is correct
 
 jobs:
   build-publish-deploy:
@@ -87,6 +90,14 @@ jobs:
           docker push $DB_BACKUP_FULL_IMAGE_TAG
           echo "DB_BACKUP_FULL_IMAGE_TAG=$DB_BACKUP_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
+      # ADDED: Build and Publish Broadcaster Docker Image
+      - name: Build and Publish Broadcaster Docker Image
+        run: |
+          BROADCASTER_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $BROADCASTER_FULL_IMAGE_TAG ${{ env.BROADCASTER_DOCKERFILE_PATH }}
+          docker push $BROADCASTER_FULL_IMAGE_TAG
+          echo "BROADCASTER_FULL_IMAGE_TAG=$BROADCASTER_FULL_IMAGE_TAG" >> $GITHUB_ENV
+
       - name: Get GKE credentials
         uses: 'google-github-actions/get-gke-credentials@v2'
         with:
@@ -94,8 +105,13 @@ jobs:
           project_id: '${{ env.PROJECT_ID }}'
           location: '${{ env.GKE_ZONE }}'
 
-      - name: Create Namespace if it doesn't exist
+      - name: Create Namespace if it doesn't exist (for dynamic app components)
         run: kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+        continue-on-error: true
+
+      # ADDED: Ensure 'prometheus' namespace exists for broadcaster
+      - name: Create 'prometheus' Namespace if it doesn't exist
+        run: kubectl create namespace prometheus --dry-run=client -o yaml | kubectl apply -f -
         continue-on-error: true
 
       - name: Inject GCS Service Account Key
@@ -109,17 +125,17 @@ jobs:
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v2.1.0
 
-      - name: Update Kustomization image tags and Deploy
+      - name: Update Kustomization image tags and Deploy dynamic app components
         working-directory: project-in-cloud/
         run: |
+          # Apply namespace to all resources in this kustomization
           kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
           kustomize edit set image ${{ env.TODO_BACKEND_IMAGE_NAME }}=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
           kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
-          kustomize edit set image ${{ env.DB_BACKUP_IMAGE_NAME }}=${{ env.DB_BACKUP_FULL_IMAGE_TAG }} # New image tag update
+          kustomize edit set image ${{ env.DB_BACKUP_IMAGE_NAME }}=${{ env.DB_BACKUP_FULL_IMAGE_TAG }}
 
-          kustomize build .
-          
+          # Build and apply to the dynamic namespace
           kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
@@ -130,14 +146,42 @@ jobs:
           echo "Waiting for todo-app deployment to roll out..."
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
-          # --- START OF NEW LINES ADDED HERE ---
           # Explicitly set the image for the todo-app deployment to force an update
           echo "Ensuring todo-app deployment uses the latest image tag..."
           kubectl set image deployment/todo-app-deployment todo-app-container=${{ env.TODO_APP_FULL_IMAGE_TAG }} -n ${{ env.K8S_NAMESPACE }}
 
           echo "Waiting for todo-app deployment to roll out after explicit image set..."
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
-          # --- END OF NEW LINES ADDED HERE ---
+
+      # ADDED: Deploy Broadcaster and its Secret to 'prometheus' namespace
+      - name: Deploy Broadcaster to 'prometheus' namespace
+        working-directory: project-in-cloud/broadcaster/manifests/ # Assuming broadcaster manifests are here
+        run: |
+          # Create a temporary kustomization for the broadcaster to set its image tag
+          # This avoids interfering with the main kustomization's namespace setting
+          mkdir -p .kustomize_broadcaster_temp
+          cp broadcaster-deployment.yaml .kustomize_broadcaster_temp/
+          cp broadcaster-secrets.yaml .kustomize_broadcaster_temp/ # Copy the secret too
+
+          echo "apiVersion: kustomize.config.k8s.io/v1beta1" > .kustomize_broadcaster_temp/kustomization.yaml
+          echo "kind: Kustomization" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "resources:" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "  - broadcaster-deployment.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "  - broadcaster-secrets.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "images:" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "  - name: ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "    newTag: ${{ env.BROADCASTER_FULL_IMAGE_TAG }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+
+          # Build and apply to the 'prometheus' namespace
+          kustomize build .kustomize_broadcaster_temp/ | kubectl apply -n prometheus -f -
+
+          echo "Sleeping for 5 seconds to allow the API server to register broadcaster resources..."
+          sleep 5s
+          echo "Waiting for broadcaster deployment to roll out..."
+          kubectl rollout status deployment/broadcaster-deployment -n prometheus --timeout=5m
 
       - name: Get service information to confirm external access
         run: kubectl get services -n ${{ env.K8S_NAMESPACE }} -o wide
+        # ADDED: Get broadcaster service info
+      - name: Get broadcaster service information
+        run: kubectl get services,deployments,pods -n prometheus -l app=broadcaster -o wide
