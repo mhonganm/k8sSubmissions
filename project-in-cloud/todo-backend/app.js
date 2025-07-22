@@ -15,7 +15,7 @@ const PG_DATABASE = process.env.TODO_PG_DATABASE || 'tododb';
 const PG_PORT = process.env.TODO_PG_PORT || 5432;
 
 // ADDED: NATS connection variables
-const NATS_SERVER_URL = process.env.NATS_SERVER_URL || 'nats://nats:4222'; // Default assuming NATS service is named 'nats' in K8s
+const NATS_SERVER_URL = process.env.NATS_SERVER_URL || 'nats://my-nats.default:4222'; // UPDATED: NATS service is in the 'default' namespace
 let nc; // NATS Connection instance
 
 const pool = new Pool({
@@ -135,13 +135,9 @@ app.get('/healthz', async (req, res) => {
         const client = await pool.connect();
         await client.query('SELECT 1');
         client.release();
-        // Optionally check NATS connection too
-        if (nc && nc.isConnected()) { // NATS 1.x does not have .isConnected()
-            // For NATS 1.x, you might check nc.connection.status or rely on the event listeners
-            // console.log('[TODO-BACKEND] NATS connection is active.');
-        } else {
-            // console.warn('[TODO-BACKEND] NATS connection is not active.');
-        }
+        // NATS 1.x does not have .isConnected() method.
+        // You can check NATS connection health by observing the NATS client's event listeners (e.g., 'error', 'disconnect', 'reconnected')
+        // or by trying to publish a test message and catching errors if it's critical for health.
         res.status(200).send('OK');
     } catch (error) {
         console.error('[TODO-BACKEND] Health check failed:', error.message);
@@ -328,3 +324,26 @@ app.listen(PORT, async () => {
     // ADDED: Connect to NATS on server startup
     await connectToNATS();
     console.log(`[TODO-BACKEND] Ready to serve requests.`);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('[TODO-BACKEND] SIGTERM received, closing database pool and NATS connection.');
+  await pool.end();
+  // ADDED: Close NATS connection on graceful shutdown
+  if (nc) {
+    // NATS 1.x close is synchronous, but it's good practice to await if it were async in newer versions
+    nc.close();
+  }
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('[TODO-BACKEND] SIGINT received, closing database pool and NATS connection.');
+  await pool.end();
+  // ADDED: Close NATS connection on graceful shutdown
+  if (nc) {
+    // NATS 1.x close is synchronous, but it's good practice to await if it were async in newer versions
+    nc.close();
+  }
+  process.exit(0);
+});
