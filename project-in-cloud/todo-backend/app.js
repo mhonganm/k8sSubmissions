@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const NATS = require('nats'); // ADDED: NATS import
+
 const app = express();
 
 const PORT = process.env.TODO_BACKEND_PORT || 3002;
@@ -11,6 +13,10 @@ const PG_USER = process.env.TODO_PG_USER || 'todouser';
 const PG_PASSWORD = process.env.TODO_PG_PASSWORD || 'your_default_todo_pg_password';
 const PG_DATABASE = process.env.TODO_PG_DATABASE || 'tododb';
 const PG_PORT = process.env.TODO_PG_PORT || 5432;
+
+// ADDED: NATS connection variables
+const NATS_SERVER_URL = process.env.NATS_SERVER_URL || 'nats://nats:4222'; // Default assuming NATS service is named 'nats' in K8s
+let nc; // NATS Connection instance
 
 const pool = new Pool({
   user: PG_USER,
@@ -39,11 +45,6 @@ async function initializeDatabase() {
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='todos' AND column_name='done') THEN
           ALTER TABLE todos ADD COLUMN done BOOLEAN DEFAULT FALSE;
-          -- You might want to update existing rows to set 'done' to false,
-          -- or leave them as default if that's acceptable.
-          -- For new installations, DEFAULT FALSE ensures consistency.
-          -- If you have existing data and want 'done' to be true for some,
-          -- you'd need a separate migration script or manual update.
           UPDATE todos SET done = FALSE WHERE done IS NULL;
         END IF;
       END
@@ -55,6 +56,37 @@ async function initializeDatabase() {
     console.error('[TODO-BACKEND] Error initializing database:', err.message);
     process.exit(1);
   }
+}
+
+// ADDED: Function to connect to NATS
+async function connectToNATS() {
+    try {
+        nc = await NATS.connect({ servers: [NATS_SERVER_URL] });
+        console.log(`[TODO-BACKEND] Connected to NATS at ${NATS_SERVER_URL}`);
+
+        // Add NATS event listeners for better observability
+        nc.on('error', (err) => {
+            console.error(`[TODO-BACKEND] NATS connection error:`, err);
+        });
+        nc.on('disconnect', () => {
+            console.warn('[TODO-BACKEND] NATS disconnected. Attempting to reconnect...');
+        });
+        nc.on('reconnecting', () => {
+            console.info('[TODO-BACKEND] NATS reconnecting...');
+        });
+        nc.on('reconnected', () => {
+            console.info('[TODO-BACKEND] NATS reconnected!');
+        });
+        nc.on('close', () => {
+            console.log('[TODO-BACKEND] NATS connection closed.');
+        });
+
+    } catch (err) {
+        console.error(`[TODO-BACKEND] Error connecting to NATS:`, err.message);
+        // Implement a retry mechanism if needed, or allow the app to run without NATS for a bit
+        // For production, you might want more sophisticated retry logic or health checks.
+        setTimeout(connectToNATS, 5000); // Retry after 5 seconds
+    }
 }
 
 app.use(cors());
@@ -78,7 +110,7 @@ app.use((req, res, next) => {
 
         if (req.originalUrl.startsWith('/api/todos')) {
             if (req.method === 'POST') {
-                logEntry.body = req.body.text ? req.body.text.substring(0, 200) + (req.body.text.length > 200 ? '...' : '') : ''; // Log first 200 chars of todo text
+                logEntry.body = req.body.text ? req.body.text.substring(0, 200) + (req.body.text.length > 200 ? '...' : '') : '';
             }
             if (req.method === 'PUT') {
                 logEntry.body = JSON.stringify(req.body).substring(0, 200) + (JSON.stringify(req.body).length > 200 ? '...' : '');
@@ -103,6 +135,13 @@ app.get('/healthz', async (req, res) => {
         const client = await pool.connect();
         await client.query('SELECT 1');
         client.release();
+        // Optionally check NATS connection too
+        if (nc && nc.isConnected()) { // NATS 1.x does not have .isConnected()
+            // For NATS 1.x, you might check nc.connection.status or rely on the event listeners
+            // console.log('[TODO-BACKEND] NATS connection is active.');
+        } else {
+            // console.warn('[TODO-BACKEND] NATS connection is not active.');
+        }
         res.status(200).send('OK');
     } catch (error) {
         console.error('[TODO-BACKEND] Health check failed:', error.message);
@@ -144,6 +183,22 @@ app.post('/api/todos', async (req, res) => {
         console.log('[TODO-BACKEND] POST /api/todos - Added:', newTodo);
         console.log(`[TODO-BACKEND] Todo Added Successfully: id=${newTodo.id}, text="${newTodo.text}"`);
         res.status(201).json(newTodo);
+
+        // ADDED: Publish NATS message for created todo
+        if (nc) {
+            const message = {
+                action: 'created',
+                todo: {
+                    id: newTodo.id,
+                    text: newTodo.text,
+                    done: newTodo.done
+                },
+                timestamp: new Date().toISOString()
+            };
+            nc.publish('todos.status', JSON.stringify(message));
+            console.log(`[TODO-BACKEND] NATS: Published 'created' message for todo ${newTodo.id}`);
+        }
+
     } catch (err) {
         console.error('[TODO-BACKEND] Error adding todo to database:', err.message);
         res.status(500).json({ error: 'Error adding todo.' });
@@ -153,7 +208,7 @@ app.post('/api/todos', async (req, res) => {
 
 app.put('/api/todos/:id', async (req, res) => {
     const { id } = req.params;
-    const { text, done } = req.body; 
+    const { text, done } = req.body;
 
     if (text === undefined && done === undefined) {
         return res.status(400).json({ error: 'At least "text" or "done" field must be provided for update.' });
@@ -187,7 +242,7 @@ app.put('/api/todos/:id', async (req, res) => {
         return res.status(400).json({ error: 'No valid fields provided for update.' });
     }
 
-  
+
     queryParams.push(id);
 
     try {
@@ -204,6 +259,22 @@ app.put('/api/todos/:id', async (req, res) => {
             console.log(`[TODO-BACKEND] PUT /api/todos/${id} - Updated successfully:`, updatedTodo);
             console.log(`[TODO-BACKEND] Todo Updated Successfully: id=${updatedTodo.id}`);
             res.json(updatedTodo);
+
+            // ADDED: Publish NATS message for updated todo
+            if (nc) {
+                const message = {
+                    action: 'updated',
+                    todo: {
+                        id: updatedTodo.id,
+                        text: updatedTodo.text,
+                        done: updatedTodo.done
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                nc.publish('todos.status', JSON.stringify(message));
+                console.log(`[TODO-BACKEND] NATS: Published 'updated' message for todo ${updatedTodo.id}`);
+            }
+
         } else {
             console.log(`[TODO-BACKEND] PUT /api/todos/${id} - Error: Todo not found`);
             console.error(`[TODO-BACKEND] Update Error: Todo id=${id} not found.`);
@@ -227,6 +298,18 @@ app.delete('/api/todos/:id', async (req, res) => {
             console.log(`[TODO-BACKEND] DELETE /api/todos/${id} - Deleted successfully`);
             console.log(`[TODO-BACKEND] Todo Deleted Successfully: id=${id}`);
             res.status(204).send();
+
+            // ADDED: Publish NATS message for deleted todo
+            if (nc) {
+                const message = {
+                    action: 'deleted',
+                    todoId: id, // Only send ID for deleted
+                    timestamp: new Date().toISOString()
+                };
+                nc.publish('todos.status', JSON.stringify(message));
+                console.log(`[TODO-BACKEND] NATS: Published 'deleted' message for todo ${id}`);
+            }
+
         } else {
             console.log(`[TODO-BACKEND] DELETE /api/todos/${id} - Error: Todo not found`);
             console.error(`[TODO-BACKEND] Deletion Error: Todo id=${id} not found.`);
@@ -242,17 +325,6 @@ app.listen(PORT, async () => {
     console.log(`[TODO-BACKEND] Server running on port ${PORT}`);
     console.log(`[TODO-BACKEND] Max todo length: ${TODO_MAX_LENGTH}`);
     await initializeDatabase();
+    // ADDED: Connect to NATS on server startup
+    await connectToNATS();
     console.log(`[TODO-BACKEND] Ready to serve requests.`);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('[TODO-BACKEND] SIGTERM received, closing database pool.');
-  await pool.end();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('[TODO-BACKEND] SIGINT received, closing database pool.');
-  await pool.end();
-  process.exit(0);
-});

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broadcaster-deployment
+  namespace: prometheus # As required, the broadcaster will live in the 'prometheus' namespace.
+  labels:
+    app: broadcaster
+spec:
+  replicas: 6 # As required: Test with 6 replicas
+  selector:
+    matchLabels:
+      app: broadcaster
+  template:
+    metadata:
+      labels:
+        app: broadcaster
+    spec:
+      containers:
+      - name: broadcaster-container
+        # UPDATED: Example image path, replace 'your-project' and 'your-repo' with your actual values.
+        # The <YOUR_IMAGE_TAG> will be dynamically set by your GitHub Actions/Kustomize.
+        image: europe-north1-docker.pkg.dev/open-uni-465421/honganmakirepo/broadcaster:<YOUR_IMAGE_TAG>
+        ports:
+        - containerPort: 3000 # Optional, for health checks or future APIs
+        env:
+        - name: NATS_SERVER_URL
+          value: "nats://my-nats.default:4222" # UPDATED: NATS service is in the 'default' namespace.
+        - name: EXTERNAL_CHAT_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: broadcaster-secrets # Name of the Kubernetes Secret holding your webhook URL
+              key: webhook_url
+        - name: BROADCASTER_QUEUE_GROUP # Explicitly define the queue group
+          value: "todo-broadcaster-group"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 200m
+            memory: 200Mi
+        livenessProbe: # Basic liveness probe (adjust path/port if you add an actual endpoint)
+          httpGet:
+            path: /healthz # You might want to add a /healthz endpoint to broadcaster for this
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe: # Basic readiness probe
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always
