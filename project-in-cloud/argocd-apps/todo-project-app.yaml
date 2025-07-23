@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: todo-project-app # Name of your ArgoCD Application
+  namespace: argocd # ArgoCD Applications typically live in the argocd namespace
+spec:
+  project: default # Or a specific ArgoCD project you've defined
+
+  source:
+    repoURL: https://github.com/mhonganm/k8sSubmissions.git # UPDATED: Your specific Git repository URL
+    targetRevision: feature/dynamic-envs # UPDATED: Deploying from the feature/dynamic-envs branch
+    path: project-in-cloud # Path to your kustomization.yaml and other manifests
+
+  destination:
+    server: https://kubernetes.default.svc # The cluster where your app will be deployed
+    namespace: 1-merge # UPDATED: Match the namespace used by your GitHub Actions for feature branches
+
+  syncPolicy:
+    automated:
+      prune: true # Delete resources that are no longer in Git
+      selfHeal: true # Automatically sync if there's drift
+    syncOptions:
+      - CreateNamespace=true
