@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: log-output-app
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/mhonganm/k8sSubmissions.git
+    targetRevision: feature/dynamic-envs
+    path: log-output/manifest/google
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: exercises
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true 
