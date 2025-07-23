@@ -13,4 +13,5 @@ resources:
 - todo-app/manifests/ingress.yaml
 - todo-backend/manifests/cronjob.yaml
 - todo-generator/manifests/cronjob.yaml
-- todo-backend/manifests/backupsecret.yaml 
+# REMOVED THIS LINE TO FIX ARGO CD SYNC ERROR:
+# - todo-backend/manifests/backupsecret.yaml

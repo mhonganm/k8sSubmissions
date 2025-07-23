@@ -1,29 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: todo-project-app # Name of your ArgoCD Application
-  namespace: argocd # ArgoCD Applications typically live in the argocd namespace
+  name: todo-project-app
+  namespace: argocd
 spec:
-  project: default # Or a specific ArgoCD project you've defined
+  project: default 
 
   source:
-    repoURL: https://github.com/mhonganm/k8sSubmissions.git # Your specific Git repository URL
-    targetRevision: feature/dynamic-envs # Deploying from the feature/dynamic-envs branch
-    path: project-in-cloud # Path to your kustomization.yaml and other manifests
+    repoURL: https://github.com/mhonganm/k8sSubmissions.git
+    targetRevision: feature/dynamic-envs
+    path: project-in-cloud
 
   destination:
-    server: https://kubernetes.default.svc # The cluster where your app will be deployed
-    namespace: 1-merge # Match the namespace used by your GitHub Actions for feature branches
+    server: https://kubernetes.default.svc
+    namespace: 1-merge
 
   syncPolicy:
     automated:
-      prune: true # Delete resources that are no longer in Git
-      selfHeal: true # Automatically sync if there's drift
+      prune: true
+      selfHeal: true 
     syncOptions:
-      - CreateNamespace=true # Optional: ArgoCD creates the namespace if it doesn't exist
-  # MOVED: ignoreDifferences is now a top-level field under spec
-  ignoreDifferences:
-    - group: "" # For core API resources like Secret
-      kind: Secret
-      name: gcs-backup-key
-      namespace: 1-merge # Must match the namespace where the secret is deployed
+      - CreateNamespace=true
