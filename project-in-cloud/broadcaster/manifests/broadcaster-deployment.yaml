@@ -17,14 +17,13 @@ spec:
     spec:
       containers:
       - name: broadcaster-container
-        # UPDATED: Example image path, replace 'your-project' and 'your-repo' with your actual values.
-        # The <YOUR_IMAGE_TAG> will be dynamically set by your GitHub Actions/Kustomize.
-        image: europe-north1-docker.pkg.dev/open-uni-465421/honganmakirepo/broadcaster:<YOUR_IMAGE_TAG>
+        # CORRECTED: Change the image tag to 'latest'. Your GitHub Actions will replace this.
+        image: europe-north1-docker.pkg.dev/open-uni-465421/honganmakirepo/broadcaster:latest
         ports:
         - containerPort: 3000 # Optional, for health checks or future APIs
         env:
         - name: NATS_SERVER_URL
-          value: "nats://my-nats.default:4222" # UPDATED: NATS service is in the 'default' namespace.
+          value: "nats://my-nats.default:4222" # NATS service is in the 'default' namespace.
         - name: EXTERNAL_CHAT_WEBHOOK_URL
           valueFrom:
             secretKeyRef:
