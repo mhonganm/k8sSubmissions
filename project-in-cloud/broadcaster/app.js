@@ -1,11 +1,15 @@
-// broadcaster/app.js
 const NATS = require('nats');
-const fetch = require('node-fetch'); // For sending to external chat service
+const fetch = require('node-fetch');
+const express = require('express'); // ADDED: Express for health checks
+
+const app = express(); // ADDED: Initialize Express app
 
 // Environment variables for NATS connection and external chat service
-const NATS_SERVER_URL = process.env.NATS_SERVER_URL || 'nats://nats:4222';
+const NATS_SERVER_URL = process.env.NATS_SERVER_URL || 'nats://my-nats.default:4222'; // Corrected NATS URL
 const EXTERNAL_CHAT_WEBHOOK_URL = process.env.EXTERNAL_CHAT_WEBHOOK_URL;
-const BROADCASTER_QUEUE_GROUP = process.env.BROADCASTER_QUEUE_GROUP || 'todo-broadcaster-group'; // Crucial for deduplication
+const BROADCASTER_QUEUE_GROUP = process.env.BROADCASTER_QUEUE_GROUP || 'todo-broadcaster-group';
+
+const HEALTH_PORT = process.env.HEALTH_PORT || 3000; // Port for health checks
 
 let nc; // NATS Connection instance
 
@@ -19,8 +23,6 @@ async function connectToNATS() {
         console.log(`[BROADCASTER] Connected to NATS at ${NATS_SERVER_URL}`);
 
         // Subscribe to the 'todos.status' topic with a queue group
-        // Using a queue group ensures that when multiple broadcaster replicas are running,
-        // each message is delivered to only one instance, preventing duplicate notifications.
         nc.subscribe('todos.status', { queue: BROADCASTER_QUEUE_GROUP }, (msg, reply, subject) => {
             console.log(`[BROADCASTER] Received message on '${subject}' (Queue Group: ${BROADCASTER_QUEUE_GROUP}): ${msg}`);
             processNATSMessage(msg);
@@ -47,7 +49,6 @@ async function connectToNATS() {
 
     } catch (err) {
         console.error(`[BROADCASTER] Error connecting to NATS:`, err.message);
-        // Retry connection after a delay
         setTimeout(connectToNATS, 5000); // Retry after 5 seconds
     }
 }
@@ -86,7 +87,7 @@ async function processNATSMessage(messageString) {
 
 /**
  * Sends a message to the configured external chat webhook URL.
- * Uses a generic JSON payload as requested.
+ * Uses a generic JSON payload as specified in instructions.
  * @param {string} message The message string to send.
  */
 async function sendToExternalChat(message) {
@@ -118,10 +119,25 @@ async function sendToExternalChat(message) {
     }
 }
 
+// ADDED: Health check endpoint for Kubernetes probes
+app.get('/healthz', (req, res) => {
+    // You could add more sophisticated checks here, e.g., NATS connection status
+    if (nc && nc.connected) { // NATS 1.x has a 'connected' property
+        res.status(200).send('OK');
+    } else {
+        res.status(500).send('NATS not connected');
+    }
+});
+
+// ADDED: Start the Express server for health checks
+app.listen(HEALTH_PORT, () => {
+    console.log(`[BROADCASTER] Health check server listening on port ${HEALTH_PORT}`);
+});
+
 // Start the NATS connection when the broadcaster application initializes
 connectToNATS();
 
-// Graceful shutdown handling
+// Handle graceful shutdown
 process.on('SIGTERM', async () => {
     console.log('[BROADCASTER] SIGTERM received, closing NATS connection.');
     if (nc) {
