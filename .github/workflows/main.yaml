@@ -169,8 +169,10 @@ jobs:
           echo "  - broadcaster-deployment.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "  - broadcaster-secrets.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "images:" >> .kustomize_broadcaster_temp/kustomization.yaml
-          echo "  - name: ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
-          echo "    newTag: ${{ env.BROADCASTER_FULL_IMAGE_TAG }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+          # CORRECTED LINE: The 'name' should be just the image name, not the full path
+          echo "  - name: ${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+          # CORRECTED LINE: The 'newTag' should be just the Git SHA, not the full image tag
+          echo "    newTag: ${{ github.sha }}" >> .kustomize_broadcaster_temp/kustomization.yaml
 
           # Build and apply to the 'prometheus' namespace
           kustomize build .kustomize_broadcaster_temp/ | kubectl apply -n prometheus -f -
