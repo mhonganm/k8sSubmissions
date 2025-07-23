@@ -10,6 +10,7 @@
 - [4.4.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.4)
 - [4.5.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.5)
 - [4.6.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.6)
+- [4.8.](https://github.com/mhonganm/k8sSubmissions/releases/tag/4.8)
 
 ### Chapter 4
 
