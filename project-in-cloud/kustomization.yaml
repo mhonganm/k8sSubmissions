@@ -13,22 +13,5 @@ resources:
 - todo-app/manifests/ingress.yaml
 - todo-backend/manifests/cronjob.yaml
 - todo-generator/manifests/cronjob.yaml
-
-images:
- 
-  - name: todo-backend
- 
-    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-backend
-    newTag: latest
-
-  - name: todo-app
-    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-app
-    newTag: latest
-
-  - name: todo-generator
-    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-generator
-    newTag: latest
-
-  - name: db-backup-tool
-    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/db-backup-tool
-    newTag: latest
+    # The backupsecret.yaml was removed in a previous step to fix ArgoCD sync issues.
+    # - todo-backend/manifests/backupsecret.yaml
