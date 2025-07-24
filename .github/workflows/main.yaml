@@ -137,10 +137,11 @@ jobs:
           set -x # ADDED for debugging: print commands as they are executed
 
           kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
-          kustomize edit set image todo-backend=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
-          kustomize edit set image todo-app=${{ env.TODO_APP_FULL_IMAGE_TAG }}
-          kustomize edit set image todo-generator=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
-          kustomize edit set image db-backup-tool=${{ env.DB_BACKUP_FULL_IMAGE_TAG }}
+          # CORRECTED: Use shell variable syntax ($VAR_NAME) instead of GitHub Actions expression syntax (${{ env.VAR_NAME }})
+          kustomize edit set image todo-backend=$TODO_BACKEND_FULL_IMAGE_TAG
+          kustomize edit set image todo-app=$TODO_APP_FULL_IMAGE_TAG
+          kustomize edit set image todo-generator=$TODO_GENERATOR_FULL_IMAGE_TAG
+          kustomize edit set image db-backup-tool=$DB_BACKUP_FULL_IMAGE_TAG
 
           # This kustomize build will now EXCLUDE backupsecret.yaml
           kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
@@ -154,7 +155,8 @@ jobs:
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
           echo "Ensuring todo-app deployment uses the latest image tag..."
-          kubectl set image deployment/todo-app-deployment todo-app-container=${{ env.TODO_APP_FULL_IMAGE_TAG }} -n ${{ env.K8S_NAMESPACE }}
+          # CORRECTED: Use shell variable syntax ($VAR_NAME) here too
+          kubectl set image deployment/todo-app-deployment todo-app-container=$TODO_APP_FULL_IMAGE_TAG -n ${{ env.K8S_NAMESPACE }}
 
           echo "Waiting for todo-app deployment to roll out after explicit image set..."
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
@@ -174,6 +176,8 @@ jobs:
           echo "  - broadcaster-deployment.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "  - broadcaster-secrets.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "images:" >> .kustomize_broadcaster_temp/kustomization.yaml
+          # This line for broadcaster might also need the same correction if it ever fails with InvalidImageName
+          # but for now, we're focusing on todo-backend.
           echo "  - name: ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "    newTag: ${{ github.sha }}" >> .kustomize_broadcaster_temp/kustomization.yaml
 
