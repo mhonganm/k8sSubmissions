@@ -123,10 +123,6 @@ jobs:
           sed -i "s|GCS_SA_KEY_PLACEHOLDER|$ENCODED_KEY|" todo-backend/manifests/backupsecret.yaml
         env:
           GCS_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}
-
-      # ADDED: Apply the GCS backup secret directly after injection
-      - name: Apply GCS Backup Secret
-        run: kubectl apply -f project-in-cloud/todo-backend/manifests/backupsecret.yaml -n ${{ env.K8S_NAMESPACE }}
       # --- End GCS Service Account Key Injection ---
 
       - name: Set up Kustomize
@@ -138,6 +134,8 @@ jobs:
       - name: Deploy dynamic app components (Direct kubectl apply)
         working-directory: project-in-cloud/
         run: |
+          set -x # ADDED for debugging: print commands as they are executed
+
           kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
           kustomize edit set image todo-backend=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
           kustomize edit set image todo-app=${{ env.TODO_APP_FULL_IMAGE_TAG }}
