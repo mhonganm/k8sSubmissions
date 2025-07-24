@@ -13,5 +13,24 @@ resources:
 - todo-app/manifests/ingress.yaml
 - todo-backend/manifests/cronjob.yaml
 - todo-generator/manifests/cronjob.yaml
-    # The backupsecret.yaml was removed in a previous step to fix ArgoCD sync issues.
-    # - todo-backend/manifests/backupsecret.yaml
+# The backupsecret.yaml was removed in a previous step to fix ArgoCD sync issues.
+# - todo-backend/manifests/backupsecret.yaml
+
+# CORRECTED: Images section for Kustomize to replace tags.
+# The 'name' field must match the original image name in your deployment YAMLs.
+images:
+  - name: todo-backend # Original image name in deployment.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-backend # Full path to Artifact Registry
+    newTag: latest # This will be replaced by GitHub Actions with the actual SHA
+
+  - name: todo-app # Original image name in deployment.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-app
+    newTag: latest
+
+  - name: todo-generator # Original image name in cronjob.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-generator
+    newTag: latest
+
+  - name: db-backup-tool # Original image name in cronjob.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/db-backup-tool
+    newTag: latest

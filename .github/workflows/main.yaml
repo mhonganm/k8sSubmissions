@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: 'actions/checkout@v4'
 
       - name: Set Kubernetes Namespace
         run: |
@@ -46,14 +46,14 @@ jobs:
             echo "K8S_NAMESPACE=$SAFE_REF_NAME" >> $GITHUB_ENV
           fi
 
-      - uses: google-github-actions/auth@v2
+      - uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GKE_SA_KEY }}'
 
       - name: 'Set up Cloud SDK'
-        uses: google-github-actions/setup-gcloud@v2
+        uses: 'google-github-actions/setup-gcloud@v2'
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          project_id: '${{ env.PROJECT_ID }}'
 
       - name: 'Use gcloud CLI'
         run: gcloud info
@@ -137,13 +137,15 @@ jobs:
           set -x # ADDED for debugging: print commands as they are executed
 
           kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
-          # CORRECTED: Use shell variable syntax ($VAR_NAME) instead of GitHub Actions expression syntax (${{ env.VAR_NAME }})
+          # CORRECTED: Use shell variable syntax ($VAR_NAME) for image tags.
+          # These commands update the newTag in kustomization.yaml using the full image path.
           kustomize edit set image todo-backend=$TODO_BACKEND_FULL_IMAGE_TAG
           kustomize edit set image todo-app=$TODO_APP_FULL_IMAGE_TAG
           kustomize edit set image todo-generator=$TODO_GENERATOR_FULL_IMAGE_TAG
           kustomize edit set image db-backup-tool=$DB_BACKUP_FULL_IMAGE_TAG
 
           # This kustomize build will now EXCLUDE backupsecret.yaml
+          # and will perform image substitutions based on kustomization.yaml's images block.
           kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
@@ -154,12 +156,12 @@ jobs:
           echo "Waiting for todo-app deployment to roll out..."
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
-          echo "Ensuring todo-app deployment uses the latest image tag..."
-          # CORRECTED: Use shell variable syntax ($VAR_NAME) here too
-          kubectl set image deployment/todo-app-deployment todo-app-container=$TODO_APP_FULL_IMAGE_TAG -n ${{ env.K8S_NAMESPACE }}
-
+          # REMOVED: Explicit kubectl set image commands here, as kustomize build should handle it now.
+          # We only need to wait for rollout status now.
           echo "Waiting for todo-app deployment to roll out after explicit image set..."
           kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+          echo "Waiting for todo-backend deployment to roll out after explicit image set..."
+          kubectl rollout status deployment/todo-backend-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
       # --- END EXISTING DIRECT DEPLOYMENT ---
 
       # --- Broadcaster Deployment (kept as is, as it's a separate project) ---
@@ -177,8 +179,8 @@ jobs:
           echo "  - broadcaster-secrets.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "images:" >> .kustomize_broadcaster_temp/kustomization.yaml
           # This line for broadcaster might also need the same correction if it ever fails with InvalidImageName
-          # but for now, we're focusing on todo-backend.
-          echo "  - name: ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+          # The 'name' here should be the full image path without the tag
+          echo "  - name: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
           echo "    newTag: ${{ github.sha }}" >> .kustomize_broadcaster_temp/kustomization.yaml
 
           kustomize build .kustomize_broadcaster_temp/ | kubectl apply -n prometheus -f -
@@ -187,8 +189,10 @@ jobs:
           sleep 5s
           echo "Waiting for broadcaster deployment to roll out..."
           kubectl rollout status deployment/broadcaster-deployment -n prometheus --timeout=5m
+
           echo "Forcing rollout restart for broadcaster-deployment..."
           kubectl rollout restart deployment/broadcaster-deployment -n prometheus
+
           echo "Waiting for forced broadcaster deployment rollout to complete..."
           kubectl rollout status deployment/broadcaster-deployment -n prometheus --timeout=5m
       # --- End Broadcaster Deployment ---
