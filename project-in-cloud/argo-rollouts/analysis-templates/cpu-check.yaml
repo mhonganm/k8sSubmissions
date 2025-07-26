@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: cpu-usage-check
+spec:
+  metrics:
+  - name: namespace-cpu-usage
+    initialDelay: 2m
+    interval: 30s
+    failureLimit: 2 # Number of consecutive times the successCondition must fail before the metric is considered failed
+    successCondition: result < 0.5 # Revert if total CPU usage rate is 0.5 cores or higher
+    provider:
+      prometheus:
+        address: http://prometheus-kube-prometheus-stack-1753-prometheus.prometheus.svc.cluster.local:9090
+        query: |
+          sum(rate(container_cpu_usage_seconds_total{namespace="1-merge"}[5m]))

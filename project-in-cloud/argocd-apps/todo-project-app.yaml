@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: todo-project-app
+  namespace: argocd
+spec:
+  project: default 
+
+  source:
+    repoURL: https://github.com/mhonganm/k8sSubmissions.git
+    targetRevision: feature/dynamic-envs
+    path: project-in-cloud
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: 1-merge
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true 
+    syncOptions:
+      - CreateNamespace=true

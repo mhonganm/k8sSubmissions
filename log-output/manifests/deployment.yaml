@@ -30,7 +30,7 @@ spec:
           value: "/shared-logs"
         volumeMounts:
         - name: shared-logs-volume
-          mountPath: /shared-logs
+          mountPath: "/shared-logs"
       - name: reader-container
         image: honganmaki/log-output-reader:latest
         imagePullPolicy: Always
@@ -48,8 +48,16 @@ spec:
         - containerPort: 3000
         volumeMounts:
         - name: shared-logs-volume
-          mountPath: /shared-logs
+          mountPath: "/shared-logs"
         - name: config-volume
           mountPath: "/etc/config"
           readOnly: true
-
+        readinessProbe:
+          httpGet:
+            host: pingpong-service
+            port: 80
+            path: /
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

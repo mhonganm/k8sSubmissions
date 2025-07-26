@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dummysite-controller
+  namespace: default # Or the namespace where you deploy the controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dummysite-controller
+  template:
+    metadata:
+      labels:
+        app: dummysite-controller
+    spec:
+      serviceAccountName: dummysite-controller-sa
+      containers:
+      - name: controller
+        # Use the image from your Docker Hub repository
+        image: honganmaki/dummy:latest
+        imagePullPolicy: Always # Force pull of the latest image on every pod creation

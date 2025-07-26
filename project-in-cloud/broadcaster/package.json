@@ -1,0 +1,17 @@
+{
+  "name": "broadcaster",
+  "version": "1.0.0",
+  "description": "Service to broadcast todo status messages to external chat.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "nats": "1.4.12",
+    "node-fetch": "^2.6.1",
+    "express": "^4.17.1"
+  }
+}

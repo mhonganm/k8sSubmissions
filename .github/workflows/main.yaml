@@ -3,7 +3,7 @@ name: Release application
 on:
   push:
     branches:
-      - main
+      - '*'
   pull_request:
     branches:
       - main
@@ -20,27 +20,40 @@ env:
   TODO_APP_DOCKERFILE_PATH: project-in-cloud/todo-app/
   TODO_GENERATOR_IMAGE_NAME: todo-generator
   TODO_GENERATOR_DOCKERFILE_PATH: project-in-cloud/todo-generator/
+  DB_BACKUP_IMAGE_NAME: db-backup-tool
+  DB_BACKUP_DOCKERFILE_PATH: project-in-cloud/db-backup-image/
+  BROADCASTER_IMAGE_NAME: broadcaster
+  BROADCASTER_DOCKERFILE_PATH: project-in-cloud/broadcaster/
 
 jobs:
   build-publish-deploy:
     name: Build, Publish and Deploy
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
+      contents: 'read' # Needs read for checkout, write for future GitOps commit
       id-token: 'write'
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: 'actions/checkout@v4'
 
-      - uses: google-github-actions/auth@v2
+      - name: Set Kubernetes Namespace
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "K8S_NAMESPACE=project" >> $GITHUB_ENV
+          else
+            SAFE_REF_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-')
+            echo "K8S_NAMESPACE=$SAFE_REF_NAME" >> $GITHUB_ENV
+          fi
+
+      - uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GKE_SA_KEY }}'
 
       - name: 'Set up Cloud SDK'
-        uses: google-github-actions/setup-gcloud@v2
+        uses: 'google-github-actions/setup-gcloud@v2'
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          project_id: '${{ env.PROJECT_ID }}'
 
       - name: 'Use gcloud CLI'
         run: gcloud info
@@ -48,32 +61,42 @@ jobs:
       - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
 
-      - name: Form todo-backend image tag
-        run: echo "TODO_BACKEND_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_BACKEND_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
+      # --- Build and Publish Images (Existing steps, kept as is) ---
+      - name: Build and Publish todo-backend Docker Image
+        run: |
+          TODO_BACKEND_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $TODO_BACKEND_FULL_IMAGE_TAG ${{ env.TODO_BACKEND_DOCKERFILE_PATH }}
+          docker push $TODO_BACKEND_FULL_IMAGE_TAG
+          echo "TODO_BACKEND_FULL_IMAGE_TAG=$TODO_BACKEND_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Build todo-backend Docker Image
-        run: docker build --tag ${{ env.TODO_BACKEND_FULL_IMAGE_TAG }} ${{ env.TODO_BACKEND_DOCKERFILE_PATH }}
+      - name: Build and Publish todo-app Docker Image
+        run: |
+          TODO_APP_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_APP_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $TODO_APP_FULL_IMAGE_TAG ${{ env.TODO_APP_DOCKERFILE_PATH }}
+          docker push $TODO_APP_FULL_IMAGE_TAG
+          echo "TODO_APP_FULL_IMAGE_TAG=$TODO_APP_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Publish todo-backend Docker Image
-        run: docker push ${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
+      - name: Build and Publish todo-generator Docker Image
+        run: |
+          TODO_GENERATOR_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_GENERATOR_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $TODO_GENERATOR_FULL_IMAGE_TAG ${{ env.TODO_GENERATOR_DOCKERFILE_PATH }}
+          docker push $TODO_GENERATOR_FULL_IMAGE_TAG
+          echo "TODO_GENERATOR_FULL_IMAGE_TAG=$TODO_GENERATOR_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Form todo-app image tag
-        run: echo "TODO_APP_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_APP_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
+      - name: Build and Publish DB Backup Docker Image
+        run: |
+          DB_BACKUP_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.DB_BACKUP_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $DB_BACKUP_FULL_IMAGE_TAG ${{ env.DB_BACKUP_DOCKERFILE_PATH }}
+          docker push $DB_BACKUP_FULL_IMAGE_TAG
+          echo "DB_BACKUP_FULL_IMAGE_TAG=$DB_BACKUP_FULL_IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Build todo-app Docker Image
-        run: docker build --tag ${{ env.TODO_APP_FULL_IMAGE_TAG }} ${{ env.TODO_APP_DOCKERFILE_PATH }}
-
-      - name: Publish todo-app Docker Image
-        run: docker push ${{ env.TODO_APP_FULL_IMAGE_TAG }}
-
-      - name: Form todo-generator image tag
-        run: echo "TODO_GENERATOR_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.TODO_GENERATOR_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Build todo-generator Docker Image
-        run: docker build --tag ${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }} ${{ env.TODO_GENERATOR_DOCKERFILE_PATH }}
-
-      - name: Publish todo-generator Docker Image
-        run: docker push ${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
+      - name: Build and Publish Broadcaster Docker Image
+        run: |
+          BROADCASTER_FULL_IMAGE_TAG=${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}:${{ github.sha }}
+          docker build --tag $BROADCASTER_FULL_IMAGE_TAG ${{ env.BROADCASTER_DOCKERFILE_PATH }}
+          docker push $BROADCASTER_FULL_IMAGE_TAG
+          echo "BROADCASTER_FULL_IMAGE_TAG=$BROADCASTER_FULL_IMAGE_TAG" >> $GITHUB_ENV
+      # --- End Build and Publish Images ---
 
       - name: Get GKE credentials
         uses: 'google-github-actions/get-gke-credentials@v2'
@@ -82,25 +105,99 @@ jobs:
           project_id: '${{ env.PROJECT_ID }}'
           location: '${{ env.GKE_ZONE }}'
 
+      # --- Namespace Creation (kept as is, as ArgoCD can also create namespaces) ---
+      - name: Create Namespace if it doesn't exist (for dynamic app components)
+        run: kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+        continue-on-error: true
+
+      - name: Create 'prometheus' Namespace if it doesn't exist
+        run: kubectl create namespace prometheus --dry-run=client -o yaml | kubectl apply -f -
+        continue-on-error: true
+      # --- End Namespace Creation ---
+
+      # --- GCS Service Account Key Injection ---
+      - name: Inject GCS Service Account Key
+        working-directory: project-in-cloud/
+        run: |
+          ENCODED_KEY=$(echo '${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}' | base64 -w 0)
+          sed -i "s|GCS_SA_KEY_PLACEHOLDER|$ENCODED_KEY|" todo-backend/manifests/backupsecret.yaml
+        env:
+          GCS_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCS_BACKUP_SERVICE_ACCOUNT_JSON }}
+      # --- End GCS Service Account Key Injection ---
+
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v2.1.0
 
-      - name: Update Kustomization image tags and Deploy
+      # --- EXISTING DIRECT DEPLOYMENT FOR FEATURE BRANCHES (and now main branch until full GitOps) ---
+      # This step will now handle both feature branches and the main branch deployment
+      # until the full GitOps transition for main is complete.
+      - name: Deploy dynamic app components (Direct kubectl apply)
         working-directory: project-in-cloud/
         run: |
-          kustomize edit set image ${{ env.TODO_BACKEND_IMAGE_NAME }}=${{ env.TODO_BACKEND_FULL_IMAGE_TAG }}
-          kustomize edit set image ${{ env.TODO_APP_IMAGE_NAME }}=${{ env.TODO_APP_FULL_IMAGE_TAG }}
-          kustomize edit set image ${{ env.TODO_GENERATOR_IMAGE_NAME }}=${{ env.TODO_GENERATOR_FULL_IMAGE_TAG }}
+          set -x # ADDED for debugging: print commands as they are executed
 
-          kustomize build . | kubectl apply -f -
+          kustomize edit set namespace ${{ env.K8S_NAMESPACE }}
+          # CORRECTED: Use shell variable syntax ($VAR_NAME) for image tags.
+          # These commands update the newTag in kustomization.yaml using the full image path.
+          kustomize edit set image todo-backend=$TODO_BACKEND_FULL_IMAGE_TAG
+          kustomize edit set image todo-app=$TODO_APP_FULL_IMAGE_TAG
+          kustomize edit set image todo-generator=$TODO_GENERATOR_FULL_IMAGE_TAG
+          kustomize edit set image db-backup-tool=$DB_BACKUP_FULL_IMAGE_TAG
+
+          # This kustomize build will now EXCLUDE backupsecret.yaml
+          # and will perform image substitutions based on kustomization.yaml's images block.
+          kustomize build . | kubectl apply -n ${{ env.K8S_NAMESPACE }} -f -
 
           echo "Sleeping for 10 seconds to allow the API server to register the new resources..."
           sleep 10s
 
           echo "Waiting for todo-backend deployment to roll out..."
-          kubectl rollout status deployment/todo-backend-deployment -n project --timeout=5m
+          kubectl rollout status deployment/todo-backend-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
           echo "Waiting for todo-app deployment to roll out..."
-          kubectl rollout status deployment/todo-app-deployment -n project --timeout=5m
+          kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
-          echo "Service information:"
-          kubectl get services -o wide
+          # REMOVED: Explicit kubectl set image commands here, as kustomize build should handle it now.
+          # We only need to wait for rollout status now.
+          echo "Waiting for todo-app deployment to roll out after explicit image set..."
+          kubectl rollout status deployment/todo-app-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+          echo "Waiting for todo-backend deployment to roll out after explicit image set..."
+          kubectl rollout status deployment/todo-backend-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+      # --- END EXISTING DIRECT DEPLOYMENT ---
+
+      # --- Broadcaster Deployment (kept as is, as it's a separate project) ---
+      - name: Deploy Broadcaster to 'prometheus' namespace
+        working-directory: project-in-cloud/broadcaster/manifests/
+        run: |
+          mkdir -p .kustomize_broadcaster_temp
+          cp broadcaster-deployment.yaml .kustomize_broadcaster_temp/
+          cp broadcaster-secrets.yaml .kustomize_broadcaster_temp/
+
+          echo "apiVersion: kustomize.config.k8s.io/v1beta1" > .kustomize_broadcaster_temp/kustomization.yaml
+          echo "kind: Kustomization" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "resources:" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "  - broadcaster-deployment.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "  - broadcaster-secrets.yaml" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "images:" >> .kustomize_broadcaster_temp/kustomization.yaml
+          # This line for broadcaster might also need the same correction if it ever fails with InvalidImageName
+          # The 'name' here should be the full image path without the tag
+          echo "  - name: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BROADCASTER_IMAGE_NAME }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+          echo "    newTag: ${{ github.sha }}" >> .kustomize_broadcaster_temp/kustomization.yaml
+
+          kustomize build .kustomize_broadcaster_temp/ | kubectl apply -n prometheus -f -
+
+          echo "Sleeping for 5 seconds to allow the API server to register broadcaster resources..."
+          sleep 5s
+          echo "Waiting for broadcaster deployment to roll out..."
+          kubectl rollout status deployment/broadcaster-deployment -n prometheus --timeout=5m
+
+          echo "Forcing rollout restart for broadcaster-deployment..."
+          kubectl rollout restart deployment/broadcaster-deployment -n prometheus
+
+          echo "Waiting for forced broadcaster deployment rollout to complete..."
+          kubectl rollout status deployment/broadcaster-deployment -n prometheus --timeout=5m
+      # --- End Broadcaster Deployment ---
+
+      - name: Get service information to confirm external access
+        run: kubectl get services -n ${{ env.K8S_NAMESPACE }} -o wide
+      - name: Get broadcaster service information
+        run: kubectl get services,deployments,pods -n prometheus -l app=broadcaster -o wide
