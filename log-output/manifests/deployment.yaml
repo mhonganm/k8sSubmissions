@@ -54,10 +54,10 @@ spec:
           readOnly: true
         readinessProbe:
           httpGet:
-            host: pingpong-service
-            port: 80
+            # Probe the container itself on its own port, not its dependency.
             path: /
-          initialDelaySeconds: 15
+            port: 3000
+          initialDelaySeconds: 5 # Can be shorter now as it's a local check
           periodSeconds: 5
-          timeoutSeconds: 3
+          timeoutSeconds: 2
           failureThreshold: 3
