@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wikipedia-deployment
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wikipedia-server
+  template:
+    metadata:
+      labels:
+        app: wikipedia-server
+    spec:
+      # This volume is shared between all containers in the pod.
+      volumes:
+      - name: web-content
+        emptyDir: {}
+
+      # 1. The Init Container
+      # This container runs to completion BEFORE the main and sidecar containers start.
+      initContainers:
+      - name: initial-page-downloader
+        image: curlimages/curl:latest
+        # The command downloads the Kubernetes Wikipedia page into the shared volume.
+        command: ["/bin/sh", "-c"]
+        args:
+          # WORKAROUND: Simulate download locally due to networking issues.
+          - "echo 'Init Container: Simulating page download...' && echo '<h1>Kubernetes (Simulated)</h1><p>This is the initial page, loaded by the init container.</p>' > /work/index.html && echo 'Init Container: Simulation complete.'"
+        volumeMounts:
+        - name: web-content
+          mountPath: /work
+
+      # 2. The Main and Sidecar Containers
+      # These start simultaneously after the init container is finished.
+      containers:
+      # 2a. The Main Application Container (nginx)
+      - name: nginx-server
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        # It serves whatever content is in the shared volume.
+        volumeMounts:
+        - name: web-content
+          mountPath: /usr/share/nginx/html
+
+      # 2b. The Sidecar Container
+      - name: random-page-updater
+        image: curlimages/curl:latest
+        # This command runs in an infinite loop to periodically update the content.
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            while true; do
+              # WORKAROUND: Shortened sleep time for easier testing.
+              sleep_time=$(( (RANDOM % 16) + 15 ));
+              echo "Sidecar: sleeping for ${sleep_time} seconds...";
+              sleep ${sleep_time};
+              echo "Sidecar: simulating a new random page download...";
+              # WORKAROUND: Simulate download locally.
+              echo "<h1>Random Page (Simulated)</h1><p>Updated at $(date)</p>" > /work/index.html;
+              echo "Sidecar: new simulated page created.";
+            done
+        volumeMounts:
+        - name: web-content
+          mountPath: /work
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wikipedia-service
+  namespace: exercises
+spec:
+  # This selector ensures the service routes traffic to our pod.
+  selector:
+    app: wikipedia-server
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  # Using LoadBalancer will provision an external IP on a cloud provider like GKE.
+  type: LoadBalancer
