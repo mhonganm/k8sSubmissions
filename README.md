@@ -7,6 +7,7 @@
 - [5.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.1)
 - [5.2.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.2)
 - [5.3.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.3)
+- [5.4.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.4)
 - [5.6.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.6)
 - [5.7.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.7)
 
