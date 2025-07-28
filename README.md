@@ -5,6 +5,7 @@
 ### Chapter 6
 
 - [5.1.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.1)
+- [5.2.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.2)
 - [5.6.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.6)
 - [5.7.](https://github.com/mhonganm/k8sSubmissions/releases/tag/5.7)
 
