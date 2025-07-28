@@ -1,27 +1,36 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # ns
-  - manifests/ns.yaml
+- todo-backend/manifests/secret.yaml
+- todo-app/manifests/configmap.yaml
+- todo-app/manifests/images-pv.yaml
+- todo-backend/manifests/postgre.yaml
+- todo-backend/manifests/service.yaml
+- todo-backend/manifests/backend-config.yaml
+- todo-backend/manifests/deployment.yaml
+- todo-app/manifests/service.yaml
+- todo-app/manifests/deployment.yaml
+- todo-app/manifests/ingress.yaml
+- todo-backend/manifests/cronjob.yaml
+- todo-generator/manifests/cronjob.yaml
+# The backupsecret.yaml was removed in a previous step to fix ArgoCD sync issues.
+# - todo-backend/manifests/backupsecret.yaml
 
-  # Secrets and CM
-  - todo-backend/manifests/secret.yaml
-  - todo-app/manifests/configmap.yaml
+# CORRECTED: Images section for Kustomize to replace tags.
+# The 'name' field must match the original image name in your deployment YAMLs.
+images:
+  - name: todo-backend # Original image name in deployment.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-backend # Full path to Artifact Registry
+    newTag: latest # This will be replaced by GitHub Actions with the actual SHA
 
-  # Add the PVC and PV here
-  - todo-app/manifests/images-pv.yaml
+  - name: todo-app # Original image name in deployment.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-app
+    newTag: latest
 
-  # DB
-  - todo-backend/manifests/postgre.yaml 
-  - todo-backend/manifests/service.yaml 
-                                       
-  # App
-  - todo-backend/manifests/deployment.yaml 
-  - todo-app/manifests/service.yaml
-  - todo-app/manifests/deployment.yaml
+  - name: todo-generator # Original image name in cronjob.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/todo-generator
+    newTag: latest
 
-  # Ingress/Gateway
-  - todo-app/manifests/ingress.yaml
-
-  # CronJobs/Jobs
-  - todo-generator/manifests/cronjob.yaml
+  - name: db-backup-tool # Original image name in cronjob.yaml
+    newName: europe-north1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/db-backup-tool
+    newTag: latest

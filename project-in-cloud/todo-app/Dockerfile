@@ -11,6 +11,7 @@ COPY package*.json ./
 RUN npm install --production
 
 COPY app.js .
+COPY public ./public
 
 EXPOSE 3000
 
