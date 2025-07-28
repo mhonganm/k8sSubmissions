@@ -66,42 +66,14 @@ spec:
           readOnly: true
         readinessProbe:
           httpGet:
-            # --- FIX: Use ClusterIP for direct access to ping-pong-service ---
-            host: 10.32.11.7 # Replaced 'pingpong-service' with its ClusterIP
-            port: 80
+            # A readiness probe should check the container's own health, not an external dependency.
+            # This now correctly probes the reader container itself on its own port.
+            port: 3000
             path: /
           initialDelaySeconds: 15
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: log-output-ingress
-  namespace: exercises
-  annotations:
-    kubernetes.io/ingress.class: traefik
-spec:
-  ingressClassName: traefik
-  rules:
-  - host: log-output.k3d.local
-    http:
-      paths:
-      - path: /status
-        pathType: Prefix
-        backend:
-          service:
-            name: log-output-service
-            port:
-              number: 80
-      - path: /pingpong
-        pathType: Prefix
-        backend:
-          service:
-            name: ping-pong-service
-            port:
-              number: 80
 ---
 apiVersion: v1
 kind: Service
@@ -113,7 +85,9 @@ metadata:
 spec:
   selector:
     app: log-output
-  type: ClusterIP
+  # Change to LoadBalancer to get an external IP on GKE for easy access.
+  # The Ingress resource was removed as it was configured for Traefik (from k3d) and is not needed.
+  type: LoadBalancer
   ports:
     - protocol: TCP
       port: 80

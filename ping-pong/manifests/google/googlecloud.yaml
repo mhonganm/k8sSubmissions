@@ -90,12 +90,13 @@ spec:
     targetPort: postgres-port
   type: ClusterIP
 ---
-# --- BEGIN CHANGES FOR ARGO ROLLOUT ---
-apiVersion: argoproj.io/v1alpha1 # <--- CHANGE: New API Version
-kind: Rollout                 # <--- CHANGE: Kind is now Rollout
+# This was previously an Argo Rollout. Changing to a standard Deployment
+# because Argo Rollouts is not installed on this cluster.
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   namespace: exercises
-  name: ping-pong-rollout     # <--- CHANGE: Recommended to rename from -deployment to -rollout
+  name: ping-pong-deployment
   labels:
     app: ping-pong
 spec:
@@ -103,14 +104,14 @@ spec:
   selector:
     matchLabels:
       app: ping-pong
-  template: # This entire 'template' section remains IDENTICAL to your Deployment's template
+  template:
     metadata:
       labels:
         app: ping-pong
     spec:
       containers:
       - name: ping-pong-container
-        image: honganmaki/ping-pong:v7.0 # <--- This is the image you will update to trigger a rollout
+        image: honganmaki/ping-pong:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3001
@@ -135,39 +136,17 @@ spec:
               key: POSTGRES_PASSWORD
         startupProbe:
           exec:
-            command: ["pg_isready", "-h", "postgres-db-service", "-p", "5432", "-U", "pingponguser", "-d", "pingpongdb"]
+            command: ["pg_isready", "-h", "postgres-db-service", "-p", "5432", "-U", "postgres", "-d", "pingpongdb"]
           initialDelaySeconds: 60
           periodSeconds: 5
           failureThreshold: 24
         readinessProbe:
           exec:
-            command: ["pg_isready", "-h", "postgres-db-service", "-p", "5432", "-U", "pingponguser", "-d", "pingpongdb"]
+            command: ["pg_isready", "-h", "postgres-db-service", "-p", "5432", "-U", "postgres", "-d", "pingpongdb"]
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-  # --- NEW: Add the strategy section for Argo Rollouts, including analysis ---
-  strategy:
-    canary:
-      steps:
-      - setWeight: 20 # Route 20% of traffic to the new version
-      - pause: {duration: 1m} # Pause for 1 minute to allow metrics to stabilize
-      - analysis: # <--- This is where your AnalysisTemplate is used!
-          templates:
-          - templateName: cpu-usage-check # <--- Reference by the name you gave your AnalysisTemplate
-      - setWeight: 50 # Route 50% of traffic
-      - pause: {duration: 1m}
-      - analysis:
-          templates:
-          - templateName: cpu-usage-check
-      - setWeight: 80 # Route 80% of traffic
-      - pause: {duration: 1m}
-      - analysis:
-          templates:
-          - templateName: cpu-usage-check
-      - setWeight: 100 # Route 100% of traffic to the new version
-# --- END CHANGES FOR ARGO ROLLOUT ---
-
 ---
 apiVersion: v1
 kind: Service
@@ -183,4 +162,4 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: 3001
-  type: LoadBalancer
+  type: ClusterIP

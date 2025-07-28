@@ -10,6 +10,7 @@ const LOG_FILE_DIR = process.env.LOG_FILE_DIR || '/shared-logs';
 const LOG_FILE_PATH = path.join(LOG_FILE_DIR, 'log.txt');
 
 const PING_PONG_SERVICE_URL = 'http://ping-pong-service:80/';
+const GREETER_SERVICE_URL = process.env.GREETER_SERVICE_URL || 'http://greeter-svc:80';
 
 
 const CONFIG_MESSAGE = process.env.MESSAGE;
@@ -34,6 +35,7 @@ async function logConfigMapDataToStdout() {
 app.get('/status', async (req, res) => {
   let logFileContent = "Log file content not available.";
   let pingPongCounter = "N/A";
+  let greeting = "Greeter service not available.";
   let infoFileConfigMap = "information.txt content not available.";
   let messageConfigMap = CONFIG_MESSAGE || "MESSAGE env variable not set.";
 
@@ -75,9 +77,21 @@ app.get('/status', async (req, res) => {
     pingPongCounter = `Error (${error.message})`;
   }
 
+  try {
+    const response = await fetch(GREETER_SERVICE_URL, { timeout: 5000 });
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    greeting = await response.text();
+    console.log(`[READER] Fetched greeting from greeter app: ${greeting}`);
+  } catch (error) {
+    console.error(`[READER] Error fetching greeting from ${GREETER_SERVICE_URL}: ${error.message}`);
+    greeting = `Error (${error.message})`;
+  }
+
   const formattedLogLine = logFileContent.trim().split('\n').filter(line => line.length > 0).pop();
 
-  const finalOutput = `file content: ${infoFileConfigMap.trim()}\nenv variable: MESSAGE=${messageConfigMap}\n${formattedLogLine}.Ping / Pongs: ${pingPongCounter}`;
+  const finalOutput = `${greeting}\n${formattedLogLine}\nPing / Pongs: ${pingPongCounter}`;
 
   res.type('text/plain').send(finalOutput);
 });
@@ -90,5 +104,6 @@ app.listen(PORT, () => {
   console.log(`[READER] Server started in port ${PORT}`);
   console.log(`[READER] Reading log-output logs from: ${LOG_FILE_PATH}`);
   console.log(`[READER] Will fetch ping-pong counter from: ${PING_PONG_SERVICE_URL}`);
+  console.log(`[READER] Will fetch greeting from: ${GREETER_SERVICE_URL}`);
   logConfigMapDataToStdout();
 });
