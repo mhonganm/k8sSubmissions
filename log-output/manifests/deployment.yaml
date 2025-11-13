@@ -30,7 +30,7 @@ spec:
           value: "/shared-logs"
         volumeMounts:
         - name: shared-logs-volume
-          mountPath: /shared-logs
+          mountPath: "/shared-logs"
       - name: reader-container
         image: honganmaki/log-output-reader:latest
         imagePullPolicy: Always
@@ -48,8 +48,16 @@ spec:
         - containerPort: 3000
         volumeMounts:
         - name: shared-logs-volume
-          mountPath: /shared-logs
+          mountPath: "/shared-logs"
         - name: config-volume
           mountPath: "/etc/config"
           readOnly: true
-
+        readinessProbe:
+          httpGet:
+            # Probe the container itself on its own port, not its dependency.
+            path: /
+            port: 3000
+          initialDelaySeconds: 5 # Can be shorter now as it's a local check
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 3

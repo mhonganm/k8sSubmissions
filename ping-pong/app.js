@@ -2,7 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const app = express();
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 
 const PG_HOST = process.env.PG_HOST || 'postgres-db-service';
 const PG_USER = process.env.PG_USER || 'postgres';

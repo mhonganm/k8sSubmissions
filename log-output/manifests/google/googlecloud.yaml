@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: exercises
+data:
+  information.txt: |
+    message from information.txt.
+    The application name is Log output.
+    It demonstrates ConfigMap file mounting.
+  MESSAGE: "Hello There-- ah general kenobi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-output-deployment
+  namespace: exercises
+  labels:
+    app: log-output
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-output
+  template:
+    metadata:
+      labels:
+        app: log-output
+    spec:
+      volumes:
+      - name: shared-logs-volume
+        emptyDir: {}
+      - name: config-volume
+        configMap:
+          name: log-output-config
+      containers:
+      - name: logger-container
+        image: honganmaki/log-output-logger:latest
+        imagePullPolicy: Always
+        env:
+        - name: LOG_FILE_DIR
+          value: "/shared-logs"
+        volumeMounts:
+        - name: shared-logs-volume
+          mountPath: "/shared-logs"
+      - name: reader-container
+        image: honganmaki/log-output-reader:latest
+        imagePullPolicy: Always
+        env:
+        - name: PORT
+          value: "3000"
+        - name: LOG_FILE_DIR
+          value: "/shared-logs"
+        - name: MESSAGE
+          valueFrom:
+            configMapKeyRef:
+              name: log-output-config
+              key: MESSAGE
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: shared-logs-volume
+          mountPath: "/shared-logs"
+        - name: config-volume
+          mountPath: "/etc/config"
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            # A readiness probe should check the container's own health, not an external dependency.
+            # This now correctly probes the reader container itself on its own port.
+            port: 3000
+            path: /
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: exercises
+  name: log-output-service
+  labels:
+    app: log-output
+spec:
+  selector:
+    app: log-output
+  # Change to LoadBalancer to get an external IP on GKE for easy access.
+  # The Ingress resource was removed as it was configured for Traefik (from k3d) and is not needed.
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000

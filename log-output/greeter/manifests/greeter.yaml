@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeter-v1-deployment
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeter
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: greeter
+        version: v1
+    spec:
+      containers:
+      - name: greeter-container
+        image: honganmaki/log-output-greeter:latest # Make sure this points to your image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3002
+        env:
+        - name: GREETING_VERSION
+          value: "v1"
+        - name: GREETING_MESSAGE
+          value: "Hello from Greeter v1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeter-svc-v1
+  namespace: exercises
+spec:
+  selector:
+    app: greeter
+    version: v1
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeter-v2-deployment
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeter
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: greeter
+        version: v2
+    spec:
+      containers:
+      - name: greeter-container
+        image: honganmaki/log-output-greeter:latest # Make sure this points to your image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3002
+        env:
+        - name: GREETING_VERSION
+          value: "v2"
+        - name: GREETING_MESSAGE
+          value: "Greetings from Greeter v2"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeter-svc-v2
+  namespace: exercises
+spec:
+  selector:
+    app: greeter
+    version: v2
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeter-svc
+  namespace: exercises
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3002
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: greeter-virtualservice
+  namespace: exercises
+spec:
+  hosts:
+  - greeter-svc
+  http:
+  - route:
+    - destination:
+        host: greeter-svc-v1
+        port:
+          number: 80
+      weight: 75
+    - destination:
+        host: greeter-svc-v2
+        port:
+          number: 80
+      weight: 25

@@ -1,0 +1,46 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  # We use the same name as the old Kubernetes Service for compatibility
+  # with other services that might be calling it.
+  name: ping-pong-service
+  namespace: exercises
+  labels:
+    app: ping-pong
+spec:
+  template:
+    metadata:
+      labels:
+        app: ping-pong
+    spec:
+      containers:
+      - name: ping-pong-container
+        image: honganmaki/ping-pong:latest # Update this tag to trigger new revisions
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080 # Knative convention
+        env:
+        - name: PG_HOST
+          value: "postgres-db-service"
+        - name: PG_DATABASE
+          value: "pingpongdb"
+        - name: PG_PORT
+          value: "5432"
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        readinessProbe:
+          exec:
+            # Corrected user to 'postgres' which is what the secret provides
+            command: ["pg_isready", "-h", "postgres-db-service", "-p", "5432", "-U", "postgres", "-d", "pingpongdb"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
